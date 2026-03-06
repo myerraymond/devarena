@@ -1,5 +1,5 @@
 import { getServerSession } from 'next-auth'
-import { authOptions } from '../[...nextauth]/route'
+import { authOptions } from '@/lib/auth'
 import { createSession } from '@/lib/session'
 import { createServerClient } from '@/lib/supabase'
 import { NextResponse } from 'next/server'

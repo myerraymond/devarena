@@ -159,33 +159,24 @@ export async function GET(
                 fontFamily: 'DM Sans, sans-serif',
                 fontWeight: '700',
                 marginBottom: 4,
+                display: 'flex',
               }}
             >
               STREAK
             </div>
-            {(stats.github_streak_days || stats.streak_days) && (stats.github_streak_days || stats.streak_days || 0) > 0 ? (
-              <div
-                style={{
-                  fontSize: 24,
-                  color: '#000',
-                  fontFamily: 'Archivo, sans-serif',
-                  fontWeight: '900',
-                }}
-              >
-                🔥 {stats.github_streak_days || stats.streak_days || 0} days
-              </div>
-            ) : (
-              <div
-                style={{
-                  fontSize: 24,
-                  color: '#000',
-                  fontFamily: 'Archivo, sans-serif',
-                  fontWeight: '900',
-                }}
-              >
-                —
-              </div>
-            )}
+            <div
+              style={{
+                fontSize: 24,
+                color: '#000',
+                fontFamily: 'Archivo, sans-serif',
+                fontWeight: '900',
+                display: 'flex',
+              }}
+            >
+              {(stats.github_streak_days || stats.streak_days) && (stats.github_streak_days || stats.streak_days || 0) > 0 
+                ? `🔥 ${stats.github_streak_days || stats.streak_days || 0} days`
+                : '—'}
+            </div>
           </div>
 
           {/* Top Language */}
@@ -197,33 +188,22 @@ export async function GET(
                 fontFamily: 'DM Sans, sans-serif',
                 fontWeight: '700',
                 marginBottom: 4,
+                display: 'flex',
               }}
             >
               TOP LANG
             </div>
-            {(stats.github_top_language || stats.top_language) ? (
-              <div
-                style={{
-                  fontSize: 24,
-                  color: '#000',
-                  fontFamily: 'Archivo, sans-serif',
-                  fontWeight: '900',
-                }}
-              >
-                {stats.github_top_language || stats.top_language}
-              </div>
-            ) : (
-              <div
-                style={{
-                  fontSize: 24,
-                  color: '#000',
-                  fontFamily: 'Archivo, sans-serif',
-                  fontWeight: '900',
-                }}
-              >
-                —
-              </div>
-            )}
+            <div
+              style={{
+                fontSize: 24,
+                color: '#000',
+                fontFamily: 'Archivo, sans-serif',
+                fontWeight: '900',
+                display: 'flex',
+              }}
+            >
+              {stats.github_top_language || stats.top_language || '—'}
+            </div>
           </div>
 
           {/* All Time */}
@@ -235,6 +215,7 @@ export async function GET(
                 fontFamily: 'DM Sans, sans-serif',
                 fontWeight: '700',
                 marginBottom: 4,
+                display: 'flex',
               }}
             >
               ALL TIME
@@ -245,6 +226,7 @@ export async function GET(
                 color: '#000',
                 fontFamily: 'Archivo, sans-serif',
                 fontWeight: '900',
+                display: 'flex',
               }}
             >
               {allTimeText} commits

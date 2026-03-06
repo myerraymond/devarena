@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 interface DashboardControlsProps {
   username: string
@@ -61,7 +64,6 @@ export default function DashboardControls({ username, isPublic }: DashboardContr
   const handleSync = async () => {
     setIsSyncing(true)
     try {
-      // Sync GitHub stats
       const githubResponse = await fetch('/api/github/sync', {
         method: 'POST',
         headers: {
@@ -96,68 +98,47 @@ export default function DashboardControls({ username, isPublic }: DashboardContr
   }
 
   return (
-    <>
-      {/* Badge Embed Section */}
+    <div className="mb-8 space-y-4">
       {isPublicState && (
-        <div className="mb-6 border-2 border-black bg-blue p-6 shadow-neobrutalism">
-          <div className="text-white font-heading font-black mb-3 text-lg">
-            EMBED BADGE IN YOUR README
-          </div>
-          <div className="text-white font-sans font-bold text-sm mb-4">
-            Add this to your GitHub README to show your DevArena stats live
-          </div>
-          
-          {/* Badge Preview */}
-          {badgeUrl && (
-            <div className="mb-4 flex items-center gap-4">
-              <img 
-                src={badgeUrl} 
-                alt="DevArena Badge" 
-                className="border-2 border-black"
-                width={200}
-                height={60}
-              />
-              <div className="flex-1">
-                <div className="bg-white border-2 border-black p-3 font-mono text-xs text-black break-all">
-                  {badgeMarkdown}
+        <Card>
+          <CardHeader>
+            <CardTitle>Embed Badge</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {badgeUrl && (
+              <div className="flex items-center gap-4">
+                <Image 
+                  src={badgeUrl} 
+                  alt="DevArena Badge" 
+                  className="border rounded-md"
+                  width={200}
+                  height={60}
+                />
+                <div className="flex-1">
+                  <div className="bg-muted p-3 font-mono text-xs break-all rounded-md">
+                    {badgeMarkdown}
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-          
-          <button
-            onClick={handleCopyBadge}
-            className="border-2 border-black bg-black text-white px-4 py-2 font-sans font-bold shadow-neobrutalism hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-neobrutalism-sm transition-all"
-          >
-            {badgeCopied ? '✓ COPIED!' : 'Copy Badge Code →'}
-          </button>
-        </div>
+            )}
+            <Button variant="outline" onClick={handleCopyBadge}>
+              {badgeCopied ? 'Copied!' : 'Copy badge code'}
+            </Button>
+          </CardContent>
+        </Card>
       )}
 
-      <div className="mb-8 flex gap-4 flex-wrap">
-        <button
-          onClick={handleShare}
-          className="border-2 border-black bg-white text-black px-4 py-2 font-sans font-bold shadow-neobrutalism hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-neobrutalism-sm transition-all"
-        >
-          {copied ? '✓ COPIED!' : 'Share your card →'}
-        </button>
-
-        <button
-          onClick={handleTogglePublic}
-          disabled={isToggling}
-          className="border-2 border-black bg-white text-black px-4 py-2 font-sans font-bold shadow-neobrutalism hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-neobrutalism-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Your profile is {isPublicState ? 'PUBLIC' : 'PRIVATE'}
-        </button>
-
-        <button
-          onClick={handleSync}
-          disabled={isSyncing}
-          className="border-2 border-black bg-yellow text-black px-4 py-2 font-sans font-bold shadow-neobrutalism hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-neobrutalism-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isSyncing ? 'SYNCING...' : 'Sync now'}
-        </button>
+      <div className="flex gap-4 flex-wrap">
+        <Button variant="outline" onClick={handleShare}>
+          {copied ? 'Copied!' : 'Share your card'}
+        </Button>
+        <Button variant="outline" onClick={handleTogglePublic} disabled={isToggling}>
+          Profile is {isPublicState ? 'public' : 'private'}
+        </Button>
+        <Button variant="outline" onClick={handleSync} disabled={isSyncing}>
+          {isSyncing ? 'Syncing...' : 'Sync now'}
+        </Button>
       </div>
-    </>
+    </div>
   )
 }

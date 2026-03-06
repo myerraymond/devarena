@@ -1,16 +1,19 @@
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/session'
 import { supabase, createServerClient } from '@/lib/supabase'
-import { formatHours } from '@/lib/utils'
-import StatCard from '@/app/components/StatCard'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
+import { Badge } from '@/components/ui/badge'
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
 import DashboardControls from '@/app/components/DashboardControls'
+import StatCard from '@/app/components/StatCard'
 import ContributionBarChart from '@/app/components/charts/ContributionBarChart'
 import LanguageDonutChart from '@/app/components/charts/LanguageDonutChart'
 
 export const revalidate = 60
 
 async function getUserRanks(userId: string): Promise<{ week: number | null; month: number | null; allTime: number | null }> {
-  // Get user's stats
   const { data: userStats } = await supabase
     .from('stats_snapshots')
     .select('week_score, month_score')
@@ -23,7 +26,6 @@ async function getUserRanks(userId: string): Promise<{ week: number | null; mont
     return { week: null, month: null, allTime: null }
   }
 
-  // Get all public users' latest stats
   const { data: allSnapshots } = await supabase
     .from('stats_snapshots')
     .select(`
@@ -41,7 +43,6 @@ async function getUserRanks(userId: string): Promise<{ week: number | null; mont
     return { week: null, month: null, allTime: null }
   }
 
-  // Group by user and get latest for each
   const userWeekScores = new Map<string, number>()
   const userMonthScores = new Map<string, number>()
 
@@ -53,21 +54,17 @@ async function getUserRanks(userId: string): Promise<{ week: number | null; mont
     }
   }
 
-  // Sort by week score
   const weekSorted = Array.from(userWeekScores.entries())
     .sort((a, b) => b[1] - a[1])
     .filter(([_, score]) => score > 0)
 
   const weekRank = weekSorted.findIndex(([uid]) => uid === userId) + 1
 
-  // Sort by month score
   const monthSorted = Array.from(userMonthScores.entries())
     .sort((a, b) => b[1] - a[1])
     .filter(([_, score]) => score > 0)
 
   const monthRank = monthSorted.findIndex(([uid]) => uid === userId) + 1
-
-  // All time uses month score
   const allTimeRank = monthRank
 
   return {
@@ -75,32 +72,6 @@ async function getUserRanks(userId: string): Promise<{ week: number | null; mont
     month: monthRank > 0 ? monthRank : null,
     allTime: allTimeRank > 0 ? allTimeRank : null,
   }
-}
-
-async function getUserJoinOrder(userId: string): Promise<number | null> {
-  // Get user's joined_at timestamp
-  const { data: user } = await supabase
-    .from('users')
-    .select('joined_at')
-    .eq('id', userId)
-    .single()
-
-  if (!user || !user.joined_at) {
-    return null
-  }
-
-  // Count how many users joined before this user
-  const { count, error } = await supabase
-    .from('users')
-    .select('*', { count: 'exact', head: true })
-    .lt('joined_at', user.joined_at)
-
-  if (error || count === null) {
-    return null
-  }
-
-  // Join order is count + 1 (they are the next user after all those who joined before)
-  return count + 1
 }
 
 async function getUserDashboardData(userId: string) {
@@ -116,14 +87,13 @@ async function getUserDashboardData(userId: string) {
     return null
   }
 
-  // Get latest stats snapshot
   const { data: latestStats } = await supabase
     .from('stats_snapshots')
     .select('*')
     .eq('user_id', userId)
     .order('snapshotted_at', { ascending: false })
     .limit(1)
-    .single()
+    .maybeSingle()
 
   return {
     user: {
@@ -139,6 +109,34 @@ async function getUserDashboardData(userId: string) {
   }
 }
 
+async function getUserJoinOrder(userId: string): Promise<number | null> {
+  // Fetch all users ordered by joined_at and id to get accurate join order
+  const { data: allUsers, error } = await supabase
+    .from('users')
+    .select('id, joined_at')
+    .order('joined_at', { ascending: true })
+    .order('id', { ascending: true })
+
+  if (error || !allUsers) {
+    return null
+  }
+
+  // Find the index of the current user
+  const userIndex = allUsers.findIndex(u => u.id === userId)
+  
+  if (userIndex === -1) {
+    return null
+  }
+
+  return userIndex + 1
+}
+
+function getGreeting() {
+  const hour = new Date().getHours()
+  if (hour < 12) return 'Good morning'
+  if (hour < 18) return 'Good afternoon'
+  return 'Good evening'
+}
 
 export default async function DashboardPage() {
   const session = await getSession()
@@ -153,9 +151,9 @@ export default async function DashboardPage() {
 
   if (!dashboardData) {
     return (
-      <div className="min-h-screen bg-background text-primary-green p-8">
-        <div className="max-w-4xl mx-auto text-center py-12">
-          <div className="text-gray-500 font-mono">
+      <div className="min-h-screen bg-background">
+        <div className="max-w-6xl mx-auto px-6 py-12">
+          <div className="text-center text-muted-foreground">
             Error loading dashboard data.
           </div>
         </div>
@@ -164,200 +162,275 @@ export default async function DashboardPage() {
   }
 
   const { user, stats } = dashboardData
+  const hasGitHub = stats && stats.github_commits !== null
 
-  if (!stats) {
-    return (
-      <div className="min-h-screen bg-background text-primary-green p-8">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-gray-500 font-mono text-center py-12">
-            No stats available yet. Stats are synced hourly.
-          </div>
-          <DashboardControls 
-            username={user.github_username || user.username || 'unknown'}
-            isPublic={user.is_public}
-          />
-        </div>
-      </div>
-    )
-  }
+  // Get daily breakdown for activity chart
+  const dailyData = stats?.daily_breakdown && Array.isArray(stats.daily_breakdown) 
+    ? stats.daily_breakdown.slice(-7) 
+    : []
 
-  const weekHours = (stats.week_total_seconds || 0) / 3600
-  const monthHours = (stats.month_total_seconds || 0) / 3600
-  const allTimeHours = (stats.all_time_seconds || 0) / 3600
-  const dailyAvgHours = (stats.daily_average_seconds || 0) / 3600
-  const hasGitHub = stats.github_commits !== null
+  // Get language breakdown for language chart
+  const languageData = stats?.language_breakdown && Array.isArray(stats.language_breakdown)
+    ? stats.language_breakdown
+    : []
 
-  const joinedDate = new Date(user.joined_at).toLocaleDateString('en-US', {
-    month: 'long',
-    year: 'numeric',
-  })
+  const totalContributions = stats?.week_contributions || 0
 
   return (
-    <div className="min-h-screen bg-background p-8">
-      <div className="max-w-4xl mx-auto">
-        {/* Rank Banner */}
-        <div className="mb-8 space-y-4">
+    <div className="min-h-screen bg-background">
+      <div className="max-w-6xl mx-auto px-6 py-12">
+        <div className="flex items-center justify-between mb-8">
+          <h1 className="text-2xl font-bold">
+            Welcome back, {user.display_name || user.username}
+          </h1>
           {joinOrder && (
-            <div className="border-2 border-black bg-yellow p-4 shadow-neobrutalism">
-              <div className="text-xl font-heading font-black text-black">
-                YOU ARE USER #{joinOrder}
-              </div>
-              <div className="text-sm font-sans font-bold text-black mt-1">
-                {joinOrder === 1 ? 'The first builder!' : `Joined as the ${joinOrder}${joinOrder === 2 ? 'nd' : joinOrder === 3 ? 'rd' : 'th'} user`}
-              </div>
-            </div>
+            <Badge variant="secondary" className="text-sm">
+              User #{joinOrder}
+            </Badge>
           )}
         </div>
 
-        {/* Controls */}
+        {/* Rank Card */}
+        {ranks.week && (
+          <Card className="mb-8">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-sm text-foreground/80">Your Rank This Week</CardTitle>
+                <HoverCard>
+                  <HoverCardTrigger asChild>
+                    <button className="text-muted-foreground hover:text-foreground">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </button>
+                  </HoverCardTrigger>
+                  <HoverCardContent>
+                    <div className="space-y-2">
+                      <h4 className="text-sm font-semibold">How Rankings Work</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Your rank is calculated by comparing your builder score against all public profiles. Rankings update hourly as new GitHub activity is synced.
+                      </p>
+                    </div>
+                  </HoverCardContent>
+                </HoverCard>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="font-mono text-3xl font-bold">#{ranks.week}</div>
+              {(ranks.month || ranks.allTime) && (
+                <>
+                  <Separator className="my-4" />
+                  <div className="space-y-2 text-sm">
+                    {ranks.month && (
+                      <div>
+                        <span className="text-foreground/70">This Month: </span>
+                        <span className="font-mono font-semibold">#{ranks.month}</span>
+                      </div>
+                    )}
+                    {ranks.allTime && (
+                      <div>
+                        <span className="text-foreground/70">All Time: </span>
+                        <span className="font-mono font-semibold">#{ranks.allTime}</span>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         <DashboardControls 
           username={user.github_username || user.username || 'unknown'}
           isPublic={user.is_public}
         />
 
-        {/* Top Section */}
-        <div className="mb-8 border-2 border-black bg-white p-6 shadow-neobrutalism">
-          <div className="flex items-center gap-6">
-            {user.avatar_url ? (
-              <img
-                src={user.avatar_url}
-                alt={user.username}
-                className="w-24 h-24 rounded-base border-2 border-black"
-              />
-            ) : (
-              <div className="w-24 h-24 rounded-base border-2 border-black bg-white flex items-center justify-center font-heading text-3xl font-black text-black">
-                {user.username[0].toUpperCase()}
+        {/* Big Stat Card */}
+        {stats && (
+          <Card className="mb-8 bg-primary/5 border-primary/20">
+            <CardHeader>
+              <CardTitle className="text-sm text-foreground/80">Total Commits This Year</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="font-mono text-5xl font-bold">
+                {stats.year_commits?.toLocaleString() || stats.all_time_commits?.toLocaleString() || '0'}
               </div>
-            )}
-            <div className="flex-1">
-              <h1 className="text-3xl font-heading font-black text-black mb-2">
-                {user.username}
-              </h1>
-              <div className="text-black font-sans font-bold mb-1">@{user.username}</div>
-              <div className="text-black font-sans text-sm mb-4">joined {joinedDate}</div>
-              
-              {/* Rankings */}
-              <div className="flex gap-4 flex-wrap">
-                {ranks.week && (
-                  <div className="border-2 border-black bg-blue px-4 py-2 text-white font-sans font-bold shadow-neobrutalism">
-                    #{ranks.week} THIS WEEK
-                  </div>
-                )}
-                {ranks.month && (
-                  <div className="border-2 border-black bg-green px-4 py-2 text-white font-sans font-bold shadow-neobrutalism">
-                    #{ranks.month} THIS MONTH
-                  </div>
-                )}
-                {ranks.allTime && (
-                  <div className="border-2 border-black bg-yellow px-4 py-2 text-black font-sans font-bold shadow-neobrutalism">
-                    #{ranks.allTime} ALL TIME
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
+            </CardContent>
+          </Card>
+        )}
 
-        {/* Big Stat */}
-        <div className="mb-8 border-2 border-black bg-yellow p-8 shadow-neobrutalism">
-          {hasGitHub ? (
-            <>
-              <div className="text-7xl font-heading font-black text-black mb-2">
-                {stats.year_commits ? `${stats.year_commits.toLocaleString()}` : (stats.all_time_commits ? `${stats.all_time_commits.toLocaleString()}` : '0')}
+        {/* Contribution Breakdown - This Week */}
+        {hasGitHub && (stats?.week_contributions || stats?.week_commits || stats?.week_prs) && (
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle>This Week Breakdown</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <StatCard label="COMMITS" value={`${stats.week_commits || 0}`} />
+                <StatCard label="PRs" value={`${stats.week_prs || 0}`} />
+                <StatCard label="PR REVIEWS" value={`${stats.week_pr_reviews || 0}`} />
+                <StatCard label="ISSUES" value={`${stats.week_issues || 0}`} />
+                <StatCard label="TOTAL" value={`${stats.week_contributions || 0}`} />
               </div>
-              <div className="text-black font-sans font-bold text-lg">
-                {stats.year_commits ? 'commits this year' : (stats.all_time_commits ? 'all-time commits' : 'no stats yet')}
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="text-7xl font-heading font-black text-black mb-2">
-                —
-              </div>
-              <div className="text-black font-sans font-bold text-lg">no stats yet</div>
-            </>
-          )}
-        </div>
-
-        {/* Stat Cards - Commit Timeframes */}
-        <div className="grid grid-cols-4 gap-4 mb-8">
-          {hasGitHub ? (
-            <>
-              <StatCard label="THIS WEEK" value={`${stats.week_commits || 0}`} accentColor="blue" />
-              <StatCard label="THIS MONTH" value={`${stats.month_commits || 0}`} accentColor="green" />
-              <StatCard label="THIS YEAR" value={`${stats.year_commits || 0}`} accentColor="yellow" />
-              <StatCard label="ALL TIME" value={`${stats.all_time_commits || 0}`} accentColor="red" />
-            </>
-          ) : (
-            <>
-              <StatCard label="—" value="—" accentColor="blue" />
-              <StatCard label="—" value="—" accentColor="green" />
-              <StatCard label="—" value="—" accentColor="yellow" />
-              <StatCard label="—" value="—" accentColor="red" />
-            </>
-          )}
-        </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Additional Stats */}
-        <div className="grid grid-cols-4 gap-4 mb-8">
-          {hasGitHub ? (
-            <>
-              <StatCard label="FOLLOWERS" value={`${stats.github_followers || 0}`} accentColor="blue" />
-              <StatCard label="STARS" value={`${stats.github_stars || 0}`} accentColor="green" />
-              <StatCard label="STREAK" value={`${stats.github_streak_days || stats.streak_days || 0}d`} accentColor="yellow" />
-              <StatCard label="REPOS" value={`${stats.github_public_repos || 0}`} accentColor="red" />
-            </>
-          ) : (
-            <>
-              <StatCard label="—" value="—" accentColor="blue" />
-              <StatCard label="—" value="—" accentColor="green" />
-              <StatCard label="—" value="—" accentColor="yellow" />
-              <StatCard label="—" value="—" accentColor="red" />
-            </>
-          )}
-        </div>
-
-        {/* Streak and Badges */}
-        <div className="flex gap-4 mb-8 flex-wrap">
-          {stats.streak_days && stats.streak_days > 0 && (
-            <div className="border-2 border-black bg-red px-4 py-2 text-white font-sans font-bold shadow-neobrutalism">
-              🔥 {stats.streak_days} day streak
-            </div>
-          )}
-          {stats.top_language && (
-            <div className="border-2 border-black bg-blue px-4 py-2 text-white font-sans font-bold shadow-neobrutalism">
-              {stats.top_language}
-            </div>
-          )}
-          {stats.top_project && (
-            <div className="border-2 border-black bg-green px-4 py-2 text-white font-sans font-bold shadow-neobrutalism">
-              {stats.top_project}
-            </div>
-          )}
-        </div>
-
-        {/* Daily Chart */}
-        {stats.daily_breakdown && Array.isArray(stats.daily_breakdown) && stats.daily_breakdown.length > 0 && (
-          <div className="mb-8">
-            <ContributionBarChart data={stats.daily_breakdown as Array<{ date: string; count: number }>} />
+        {stats && (stats.github_followers !== null || stats.github_stars !== null || stats.streak_days !== null || stats.github_streak_days !== null) && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            {stats.github_followers !== null && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm text-foreground/80">Followers</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="font-mono text-2xl font-bold">{stats.github_followers.toLocaleString()}</div>
+                </CardContent>
+              </Card>
+            )}
+            {stats.github_stars !== null && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm text-foreground/80">Stars</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="font-mono text-2xl font-bold">{stats.github_stars.toLocaleString()}</div>
+                </CardContent>
+              </Card>
+            )}
+            {(stats.streak_days !== null || stats.github_streak_days !== null) && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm text-foreground/80">Streak</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Badge variant="outline" className="text-lg">
+                    🔥 {(stats.streak_days || stats.github_streak_days || 0)}d
+                  </Badge>
+                </CardContent>
+              </Card>
+            )}
+            {(stats.top_language || stats.github_top_language) && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm text-foreground/80">Top Language</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Badge variant="secondary" className="text-lg">
+                    {stats.top_language || stats.github_top_language}
+                  </Badge>
+                </CardContent>
+              </Card>
+            )}
           </div>
         )}
 
-        {/* Language Chart */}
-        {stats.language_breakdown && Array.isArray(stats.language_breakdown) && stats.language_breakdown.length > 0 && (
+        {/* Stat Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <HoverCard>
+            <HoverCardTrigger asChild>
+              <Card className="cursor-help">
+                <CardHeader>
+                  <CardTitle className="text-sm text-foreground/80">Week</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="font-mono text-3xl font-bold">{stats?.week_commits?.toLocaleString() || '0'}</div>
+                </CardContent>
+              </Card>
+            </HoverCardTrigger>
+            <HoverCardContent>
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold">This Week</h4>
+                <p className="text-sm text-foreground/80">
+                  Total GitHub commits from the last 7 days. This is the primary metric for weekly rankings.
+                </p>
+              </div>
+            </HoverCardContent>
+          </HoverCard>
+          <HoverCard>
+            <HoverCardTrigger asChild>
+              <Card className="cursor-help">
+                <CardHeader>
+                  <CardTitle className="text-sm text-foreground/80">Month</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="font-mono text-3xl font-bold">{stats?.month_commits?.toLocaleString() || '0'}</div>
+                </CardContent>
+              </Card>
+            </HoverCardTrigger>
+            <HoverCardContent>
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold">This Month</h4>
+                <p className="text-sm text-foreground/80">
+                  Total GitHub commits from the last 30 days. Used for monthly and all-time rankings.
+                </p>
+              </div>
+            </HoverCardContent>
+          </HoverCard>
+          <HoverCard>
+            <HoverCardTrigger asChild>
+              <Card className="cursor-help">
+                <CardHeader>
+                  <CardTitle className="text-sm text-foreground/80">This Year</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="font-mono text-3xl font-bold">{stats?.year_commits?.toLocaleString() || '0'}</div>
+                </CardContent>
+              </Card>
+            </HoverCardTrigger>
+            <HoverCardContent>
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold">This Year</h4>
+                <p className="text-sm text-foreground/80">
+                  Total GitHub commits since January 1st of the current year. Shows your annual contribution activity.
+                </p>
+              </div>
+            </HoverCardContent>
+          </HoverCard>
+          <HoverCard>
+            <HoverCardTrigger asChild>
+              <Card className="cursor-help">
+                <CardHeader>
+                  <CardTitle className="text-sm text-foreground/80">All Time</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="font-mono text-3xl font-bold">{stats?.all_time_commits?.toLocaleString() || '0'}</div>
+                </CardContent>
+              </Card>
+            </HoverCardTrigger>
+            <HoverCardContent>
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold">All Time</h4>
+                <p className="text-sm text-foreground/80">
+                  Total GitHub commits across your entire GitHub history. This is your lifetime contribution count.
+                </p>
+              </div>
+            </HoverCardContent>
+          </HoverCard>
+        </div>
+
+        {/* Charts */}
+        {dailyData.length > 0 && (
+          <div className="mb-8">
+            <ContributionBarChart data={dailyData.map((day: { date: string; count: number }) => ({
+              date: day.date,
+              count: day.count,
+            }))} />
+          </div>
+        )}
+
+        {languageData.length > 0 && (
           <div className="mb-8">
             <LanguageDonutChart 
-              languages={stats.language_breakdown as Array<{ name: string; percentage: number; size: number }>}
-              totalContributions={(stats.week_commits || 0) + (stats.week_prs || 0)}
+              languages={languageData.map((lang: { name: string; size: number; percentage: number }) => ({
+                name: lang.name,
+                size: lang.size,
+                percentage: lang.percentage,
+              }))}
+              totalContributions={totalContributions}
             />
-          </div>
-        )}
-
-        {/* Verified Badge */}
-        {hasGitHub && (
-          <div className="flex items-center gap-2 text-black font-sans font-bold border-2 border-black bg-white px-4 py-2 shadow-neobrutalism inline-block">
-            <span className="text-black">✓</span>
-            <span>VERIFIED VIA GITHUB</span>
           </div>
         )}
       </div>

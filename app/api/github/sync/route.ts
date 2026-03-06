@@ -6,16 +6,27 @@ import { getGitHubStats } from '@/lib/github'
 export async function POST(request: Request) {
   try {
     const session = await getSession()
-    let body = {}
+    let body: Record<string, unknown> = {}
     try {
       body = await request.json()
     } catch (e) {
       // Request body might be empty, that's okay
     }
-    const userId = session?.userId || body.userId
+
+    let userId = session?.userId
+
+    // Allow internal server-to-server calls (e.g. from sign-in callback)
+    // by verifying a shared secret header
+    if (!userId && body.userId) {
+      const internalSecret = request.headers.get('x-internal-secret')
+      if (internalSecret === process.env.NEXTAUTH_SECRET) {
+        userId = body.userId as string
+      } else {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      }
+    }
 
     if (!userId) {
-      console.error('GitHub sync: No userId found', { session: !!session, body })
       return NextResponse.json({ error: 'Unauthorized - No user ID' }, { status: 401 })
     }
 
@@ -30,7 +41,7 @@ export async function POST(request: Request) {
 
     if (userError) {
       console.error('GitHub sync: User query error', userError)
-      return NextResponse.json({ error: `User query failed: ${userError.message}` }, { status: 404 })
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
     if (!user) {
@@ -67,10 +78,17 @@ export async function POST(request: Request) {
       month_score: stats.monthScore || 0,
       week_commits: stats.weekCommits || 0,
       week_prs: stats.weekPRs || 0,
+      week_pr_reviews: stats.weekPRReviews || 0,
+      week_issues: stats.weekIssues || 0,
+      week_contributions: stats.weekContributions || 0,
       month_commits: stats.monthCommits || 0,
       month_prs: stats.monthPRs || 0,
+      month_pr_reviews: stats.monthPRReviews || 0,
+      month_issues: stats.monthIssues || 0,
+      month_contributions: stats.monthContributions || 0,
       year_commits: stats.yearCommits || 0,
       all_time_commits: stats.allTimeCommits || 0,
+      all_time_contributions: stats.allTimeContributions || 0,
       github_commits: stats.allTimeCommits || stats.monthCommits || 0, // Use all-time if available, fallback to month
       github_streak_days: stats.streak || 0,
       github_top_language: stats.topLanguage || null,
@@ -116,10 +134,7 @@ export async function POST(request: Request) {
 
     if (upsertError) {
       console.error('GitHub sync: Upsert error', upsertError)
-      return NextResponse.json({ 
-        error: 'Failed to save stats',
-        details: upsertError.message 
-      }, { status: 500 })
+      return NextResponse.json({ error: 'Failed to save stats' }, { status: 500 })
     }
 
     console.log('GitHub sync: Successfully saved stats', { userId: user.id })
@@ -127,13 +142,9 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('GitHub sync error:', error)
     const errorMessage = error instanceof Error ? error.message : 'Sync failed'
-    const errorStack = error instanceof Error ? error.stack : undefined
-    const errorCause = error instanceof Error && 'cause' in error ? error.cause : undefined
-    console.error('Error details:', { errorMessage, errorStack, errorCause })
+    console.error('Error details:', error)
     return NextResponse.json({ 
-      error: errorMessage,
-      details: errorStack,
-      cause: errorCause
+      error: process.env.NODE_ENV === 'production' ? 'Sync failed' : errorMessage,
     }, { status: 500 })
   }
 }

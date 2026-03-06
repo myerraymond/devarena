@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { formatHours } from '@/lib/utils'
+import Image from 'next/image'
 
 interface LeaderboardCardProps {
   rank: number
@@ -15,65 +15,61 @@ interface LeaderboardCardProps {
   stars: number | null
   publicRepos: number | null
   is_active: boolean
+  score: number | null
   index?: number
 }
 
 export default function LeaderboardCard({
   rank,
   username,
-  display_name,
-  hours,
   commits,
   streak,
   top_language,
-  followers,
-  stars,
-  publicRepos,
   is_active,
-  index = 0,
+  score,
 }: LeaderboardCardProps) {
-  const bgColor = index % 2 === 0 ? 'bg-white' : 'bg-light-blue'
-  
   return (
     <Link
       href={`/u/${username}`}
-      className={`block border-2 border-black ${bgColor} p-4 shadow-neobrutalism hover:-translate-x-[2px] hover:-translate-y-[2px] hover:shadow-[6px_6px_0px_0px_#000] transition-all`}
+      className="block bg-card-bg border border-border rounded-base p-4 hover:bg-background transition-colors"
     >
-      <div className="flex items-start justify-between mb-3">
-        <div className="text-4xl font-heading font-black text-black">
+      <div className="flex items-center gap-3 mb-3">
+        <span className={`font-mono text-lg ${rank <= 3 ? 'font-semibold text-foreground' : 'text-muted'}`}>
           #{rank}
+        </span>
+        <Image
+          src={`https://github.com/${username}.png`}
+          alt={username}
+          width={32}
+          height={32}
+          className="rounded-full"
+        />
+        <div className="flex-1">
+          <div className="text-sm font-medium text-foreground">{username}</div>
+          <div className="text-xs text-muted">@{username}</div>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          {is_active && (
-            <span className="px-2 py-1 bg-green border-2 border-black text-white font-sans font-bold text-xs rounded-base">
-              ACTIVE
-            </span>
-          )}
-        </div>
+        {is_active && (
+          <span className="text-xs text-accent-green">● Live</span>
+        )}
       </div>
-      <div className="font-heading font-black text-xl text-black mb-3">
-        {username}
-      </div>
-      <div className="grid grid-cols-2 gap-3 text-sm font-sans font-bold">
+      <div className="grid grid-cols-2 gap-3 text-xs">
         <div>
-          <div className="text-black mb-1">COMMITS</div>
-          <div className="text-black">{commits || 0}</div>
+          <div className="text-muted mb-1">Score</div>
+          <div className="font-mono font-semibold text-foreground">{score?.toLocaleString() || '—'}</div>
         </div>
         <div>
-          <div className="text-black mb-1">FOLLOWERS</div>
-          <div className="text-black">{followers || 0}</div>
+          <div className="text-muted mb-1">Commits</div>
+          <div className="font-mono text-muted">{commits?.toLocaleString() || '—'}</div>
         </div>
         <div>
-          <div className="text-black mb-1">STARS</div>
-          <div className="text-black">{stars || 0}</div>
+          <div className="text-muted mb-1">Streak</div>
+          <div className={streak && streak > 7 ? 'text-accent-green' : 'text-foreground'}>
+            {streak ? `🔥 ${streak}d` : '—'}
+          </div>
         </div>
         <div>
-          <div className="text-black mb-1">STREAK</div>
-          <div className="text-black">{streak ? `${streak}d` : '—'}</div>
-        </div>
-        <div>
-          <div className="text-black mb-1">TOP LANG</div>
-          <div className="text-black">{top_language || '—'}</div>
+          <div className="text-muted mb-1">Language</div>
+          <div className="text-muted">{top_language || '—'}</div>
         </div>
       </div>
     </Link>

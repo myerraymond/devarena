@@ -1,40 +1,39 @@
+import { Skeleton } from '@/components/ui/skeleton'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+
 export default function LeaderboardSkeleton() {
   return (
-    <>
-      {/* Desktop Skeleton */}
-      <div className="hidden md:block space-y-4">
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Rank</TableHead>
+          <TableHead>Builder</TableHead>
+          <TableHead>Score</TableHead>
+          <TableHead>Commits</TableHead>
+          <TableHead>Streak</TableHead>
+          <TableHead>Status</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
         {Array.from({ length: 10 }).map((_, i) => (
-          <div
-            key={i}
-            className={`border-2 border-black ${i % 2 === 0 ? 'bg-white' : 'bg-light-blue'} p-6 shadow-neobrutalism animate-pulse`}
-          >
-            <div className="flex items-center gap-6">
-              <div className="w-20 h-16 bg-black/20"></div>
-              <div className="flex-1">
-                <div className="w-48 h-6 bg-black/20 mb-3"></div>
-                <div className="w-64 h-4 bg-black/10"></div>
+          <TableRow key={i}>
+            <TableCell><Skeleton className="h-4 w-8" /></TableCell>
+            <TableCell>
+              <div className="flex items-center gap-3">
+                <Skeleton className="h-8 w-8 rounded-full" />
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-3 w-16" />
+                </div>
               </div>
-            </div>
-          </div>
+            </TableCell>
+            <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+            <TableCell><Skeleton className="h-4 w-12" /></TableCell>
+            <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+            <TableCell><Skeleton className="h-5 w-12" /></TableCell>
+          </TableRow>
         ))}
-      </div>
-
-      {/* Mobile Skeleton */}
-      <div className="md:hidden space-y-4">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <div
-            key={i}
-            className={`border-2 border-black ${i % 2 === 0 ? 'bg-white' : 'bg-light-blue'} p-4 shadow-neobrutalism animate-pulse`}
-          >
-            <div className="w-16 h-12 bg-black/20 mb-3"></div>
-            <div className="w-32 h-5 bg-black/20 mb-2"></div>
-            <div className="grid grid-cols-2 gap-3 mt-4">
-              <div className="w-20 h-4 bg-black/10"></div>
-              <div className="w-20 h-4 bg-black/10"></div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </>
+      </TableBody>
+    </Table>
   )
 }

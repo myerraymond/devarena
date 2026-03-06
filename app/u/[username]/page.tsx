@@ -1,10 +1,14 @@
 import { notFound } from 'next/navigation'
-import { supabase, createServerClient } from '@/lib/supabase'
-import { formatHours } from '@/lib/utils'
+import { supabase } from '@/lib/supabase'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
+import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
+import { Badge } from '@/components/ui/badge'
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
 import StatCard from '@/app/components/StatCard'
 import ContributionBarChart from '@/app/components/charts/ContributionBarChart'
 import LanguageDonutChart from '@/app/components/charts/LanguageDonutChart'
-import ActivityBarChart from '@/app/components/charts/ActivityBarChart'
 import type { Metadata } from 'next'
 
 export const revalidate = 60
@@ -27,36 +31,46 @@ interface UserStats {
   top_language: string | null
   top_project: string | null
   snapshotted_at: string | null
+  week_commits: number | null
+  month_commits: number | null
+  year_commits: number | null
+  all_time_commits: number | null
+  week_prs: number | null
+  week_pr_reviews: number | null
+  week_issues: number | null
+  week_contributions: number | null
+  github_followers: number | null
+  github_stars: number | null
+  github_public_repos: number | null
+  github_streak_days: number | null
+  github_top_language: string | null
+  daily_breakdown: any
+  language_breakdown: any
 }
 
 async function getUserJoinOrder(userId: string): Promise<number | null> {
-  // Get user's joined_at timestamp
-  const { data: user } = await supabase
+  // Fetch all users ordered by joined_at and id to get accurate join order
+  const { data: allUsers, error } = await supabase
     .from('users')
-    .select('joined_at')
-    .eq('id', userId)
-    .single()
+    .select('id, joined_at')
+    .order('joined_at', { ascending: true })
+    .order('id', { ascending: true })
 
-  if (!user || !user.joined_at) {
+  if (error || !allUsers) {
     return null
   }
 
-  // Count how many users joined before this user
-  const { count, error } = await supabase
-    .from('users')
-    .select('*', { count: 'exact', head: true })
-    .lt('joined_at', user.joined_at)
-
-  if (error || count === null) {
+  // Find the index of the current user
+  const userIndex = allUsers.findIndex(u => u.id === userId)
+  
+  if (userIndex === -1) {
     return null
   }
 
-  // Join order is count + 1 (they are the next user after all those who joined before)
-  return count + 1
+  return userIndex + 1
 }
 
 async function getUserRanks(userId: string): Promise<{ week: number | null; month: number | null; allTime: number | null }> {
-  // Get user's stats
   const { data: userStats } = await supabase
     .from('stats_snapshots')
     .select('week_score, month_score')
@@ -69,7 +83,6 @@ async function getUserRanks(userId: string): Promise<{ week: number | null; mont
     return { week: null, month: null, allTime: null }
   }
 
-  // Get all public users' latest stats
   const { data: allSnapshots } = await supabase
     .from('stats_snapshots')
     .select(`
@@ -87,7 +100,6 @@ async function getUserRanks(userId: string): Promise<{ week: number | null; mont
     return { week: null, month: null, allTime: null }
   }
 
-  // Group by user and get latest for each
   const userWeekScores = new Map<string, number>()
   const userMonthScores = new Map<string, number>()
 
@@ -99,21 +111,17 @@ async function getUserRanks(userId: string): Promise<{ week: number | null; mont
     }
   }
 
-  // Sort by week score
   const weekSorted = Array.from(userWeekScores.entries())
     .sort((a, b) => b[1] - a[1])
     .filter(([_, score]) => score > 0)
 
   const weekRank = weekSorted.findIndex(([uid]) => uid === userId) + 1
 
-  // Sort by month score
   const monthSorted = Array.from(userMonthScores.entries())
     .sort((a, b) => b[1] - a[1])
     .filter(([_, score]) => score > 0)
 
   const monthRank = monthSorted.findIndex(([uid]) => uid === userId) + 1
-
-  // All time uses month score
   const allTimeRank = monthRank
 
   return {
@@ -124,7 +132,6 @@ async function getUserRanks(userId: string): Promise<{ week: number | null; mont
 }
 
 async function getUserProfile(username: string): Promise<{ user: UserProfile; stats: UserStats | null } | null> {
-  // First check by github_username, then fallback to username
   const { data: publicUser, error: publicError } = await supabase
     .from('users')
     .select('id, username, github_username, display_name, avatar_url, joined_at, is_public')
@@ -136,19 +143,13 @@ async function getUserProfile(username: string): Promise<{ user: UserProfile; st
     return null
   }
 
-  // Get latest stats snapshot (public data)
-  const { data: latestStats, error: statsError } = await supabase
+  const { data: latestStats } = await supabase
     .from('stats_snapshots')
     .select('*')
     .eq('user_id', publicUser.id)
     .order('snapshotted_at', { ascending: false })
     .limit(1)
     .maybeSingle()
-  
-  // Log error for debugging
-  if (statsError) {
-    console.error('Error fetching stats:', statsError)
-  }
 
   return {
     user: {
@@ -163,7 +164,6 @@ async function getUserProfile(username: string): Promise<{ user: UserProfile; st
   }
 }
 
-
 export async function generateMetadata({ params }: { params: { username: string } }): Promise<Metadata> {
   const profile = await getUserProfile(params.username)
 
@@ -173,14 +173,14 @@ export async function generateMetadata({ params }: { params: { username: string 
     }
   }
 
-  const commits = profile.stats.github_commits || 0
+  const commits = profile.stats.all_time_commits || 0
   const username = profile.user.username
 
   return {
-    title: `@${username} has ${commits} commits on DevArena`,
+    title: `@${username} - DevArena`,
     description: `View @${username}'s coding stats and leaderboard ranking on DevArena`,
     openGraph: {
-      title: `@${username} has ${commits} commits on DevArena`,
+      title: `@${username} - DevArena`,
       description: `View @${username}'s coding stats and leaderboard ranking on DevArena`,
       url: `${process.env.NEXTAUTH_URL}/u/${params.username}`,
       siteName: 'DevArena',
@@ -196,7 +196,7 @@ export async function generateMetadata({ params }: { params: { username: string 
     },
     twitter: {
       card: 'summary_large_image',
-      title: `@${username} has ${commits} commits on DevArena`,
+      title: `@${username} - DevArena`,
       description: `View @${username}'s coding stats and leaderboard ranking on DevArena`,
       images: [`${process.env.NEXTAUTH_URL}/u/${params.username}/og`],
     },
@@ -207,210 +207,311 @@ export default async function UserProfilePage({ params }: { params: { username: 
   const profile = await getUserProfile(params.username)
 
   if (!profile) {
-    return (
-      <div className="min-h-screen bg-background text-primary-green p-8 flex items-center justify-center">
-        <div className="text-center">
-          <div className="font-mono text-2xl mb-4">
-            <span className="text-primary-amber">$</span> user not found
-          </div>
-          <div className="text-gray-500 font-mono mb-8">
-            User <span className="text-primary-green">@{params.username}</span> does not exist
-          </div>
-          <div className="text-gray-600 font-mono text-sm">
-            <span className="text-primary-amber">404</span> - Page not found
-          </div>
-        </div>
-      </div>
-    )
+    notFound()
   }
 
   const { user, stats } = profile
   const ranks = await getUserRanks(user.id)
   const joinOrder = await getUserJoinOrder(user.id)
 
-  // Show profile even if no stats yet - display zeros
-  const hasStats = stats && (
-    (stats.week_total_seconds && stats.week_total_seconds > 0) ||
-    (stats.github_commits && stats.github_commits > 0) ||
-    (stats.month_total_seconds && stats.month_total_seconds > 0) ||
-    (stats.all_time_seconds && stats.all_time_seconds > 0)
-  )
-
   const joinedDate = new Date(user.joined_at).toLocaleDateString('en-US', {
     month: 'long',
     year: 'numeric',
   })
 
+  // Get daily breakdown for activity chart
+  const dailyData = stats?.daily_breakdown && Array.isArray(stats.daily_breakdown) 
+    ? stats.daily_breakdown.slice(-7) 
+    : []
+
+  // Get language breakdown for language chart
+  const languageData = stats?.language_breakdown && Array.isArray(stats.language_breakdown)
+    ? stats.language_breakdown
+    : []
+
+  const totalContributions = stats?.week_contributions || 0
+
   return (
-    <div className="min-h-screen bg-background p-8">
-      <div className="max-w-4xl mx-auto">
-        {/* Top Section */}
-        <div className="mb-8 border-2 border-black bg-white p-6 shadow-neobrutalism">
-          <div className="flex items-center gap-6">
-            {user.avatar_url ? (
-              <img
-                src={user.avatar_url}
-                alt={user.username}
-                className="w-24 h-24 rounded-base border-2 border-black"
-              />
-            ) : (
-              <div className="w-24 h-24 rounded-base border-2 border-black bg-white flex items-center justify-center font-heading text-3xl font-black text-black">
-                {user.username[0].toUpperCase()}
+    <div className="min-h-screen bg-background">
+      <div className="max-w-6xl mx-auto px-6 py-12">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left Column - User Info */}
+          <Card className="lg:col-span-1">
+            <CardContent className="pt-6">
+              <div className="flex flex-col items-center lg:items-start mb-6">
+                <Avatar className="h-16 w-16 mb-4">
+                  <AvatarImage src={user.avatar_url || `https://github.com/${user.username}.png`} alt={user.username} />
+                  <AvatarFallback>{user.username[0].toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <h1 className="text-2xl font-bold mb-1">{user.username}</h1>
+                <div className="text-sm text-foreground/70 mb-4">@{user.username}</div>
+                <div className="text-xs text-foreground/70 mb-4">
+                  {joinOrder && `User #${joinOrder} • `}
+                  Joined {joinedDate}
+                </div>
+                <Button variant="outline" asChild>
+                  <a
+                    href={`https://github.com/${user.username}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    View on GitHub →
+                  </a>
+                </Button>
+              </div>
+
+              {(ranks.week || ranks.month || ranks.allTime) && (
+                <>
+                  <Separator className="my-6" />
+                  <div className="space-y-2">
+                    {ranks.week && (
+                      <HoverCard>
+                        <HoverCardTrigger asChild>
+                          <div className="text-sm cursor-help">
+                            <span className="text-foreground/70">This Week: </span>
+                            <span className="font-mono font-semibold">#{ranks.week}</span>
+                          </div>
+                        </HoverCardTrigger>
+                        <HoverCardContent>
+                          <div className="space-y-2">
+                            <h4 className="text-sm font-semibold">Weekly Rank</h4>
+                            <p className="text-sm text-foreground/80">
+                              Your position among all builders this week, ranked by builder score.
+                            </p>
+                          </div>
+                        </HoverCardContent>
+                      </HoverCard>
+                    )}
+                    {ranks.month && (
+                      <HoverCard>
+                        <HoverCardTrigger asChild>
+                          <div className="text-sm cursor-help">
+                            <span className="text-foreground/70">This Month: </span>
+                            <span className="font-mono font-semibold">#{ranks.month}</span>
+                          </div>
+                        </HoverCardTrigger>
+                        <HoverCardContent>
+                          <div className="space-y-2">
+                            <h4 className="text-sm font-semibold">Monthly Rank</h4>
+                            <p className="text-sm text-foreground/80">
+                              Your position among all builders this month, ranked by builder score.
+                            </p>
+                          </div>
+                        </HoverCardContent>
+                      </HoverCard>
+                    )}
+                    {ranks.allTime && (
+                      <HoverCard>
+                        <HoverCardTrigger asChild>
+                          <div className="text-sm cursor-help">
+                            <span className="text-foreground/70">All Time: </span>
+                            <span className="font-mono font-semibold">#{ranks.allTime}</span>
+                          </div>
+                        </HoverCardTrigger>
+                        <HoverCardContent>
+                          <div className="space-y-2">
+                            <h4 className="text-sm font-semibold">All-Time Rank</h4>
+                            <p className="text-sm text-foreground/80">
+                              Your position among all builders across all time, ranked by builder score.
+                            </p>
+                          </div>
+                        </HoverCardContent>
+                      </HoverCard>
+                    )}
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Right Column - Stats */}
+          <div className="lg:col-span-2 space-y-8">
+            {/* Big Stat Card */}
+            {stats && (
+              <Card className="bg-primary/5 border-primary/20">
+                <CardHeader>
+                  <CardTitle className="text-sm text-foreground/80">Total Commits This Year</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="font-mono text-5xl font-bold">
+                    {stats.year_commits?.toLocaleString() || stats.all_time_commits?.toLocaleString() || '0'}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Contribution Breakdown - This Week */}
+            {stats && (stats.week_contributions || stats.week_commits || stats.week_prs) && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>This Week Breakdown</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    <StatCard label="COMMITS" value={`${stats.week_commits || 0}`} />
+                    <StatCard label="PRs" value={`${stats.week_prs || 0}`} />
+                    <StatCard label="PR REVIEWS" value={`${stats.week_pr_reviews || 0}`} />
+                    <StatCard label="ISSUES" value={`${stats.week_issues || 0}`} />
+                    <StatCard label="TOTAL" value={`${stats.week_contributions || 0}`} />
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Additional Stats */}
+            {stats && (stats.github_followers !== null || stats.github_stars !== null || stats.streak_days !== null || stats.github_streak_days !== null) && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {stats.github_followers !== null && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-sm text-foreground/80">Followers</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="font-mono text-2xl font-bold">{stats.github_followers.toLocaleString()}</div>
+                    </CardContent>
+                  </Card>
+                )}
+                {stats.github_stars !== null && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-sm text-foreground/80">Stars</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="font-mono text-2xl font-bold">{stats.github_stars.toLocaleString()}</div>
+                    </CardContent>
+                  </Card>
+                )}
+                {(stats.streak_days !== null || stats.github_streak_days !== null) && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-sm text-foreground/80">Streak</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <Badge variant="outline" className="text-lg">
+                        🔥 {(stats.streak_days || stats.github_streak_days || 0)}d
+                      </Badge>
+                    </CardContent>
+                  </Card>
+                )}
+                {(stats.top_language || stats.github_top_language) && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-sm text-foreground/80">Top Language</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <Badge variant="secondary" className="text-lg">
+                        {stats.top_language || stats.github_top_language}
+                      </Badge>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
             )}
-            <div className="flex-1">
-              <h1 className="text-3xl font-heading font-black text-black mb-2">
-                {user.username}
-              </h1>
-              <div className="text-black font-sans font-bold mb-1">@{user.username}</div>
-              <div className="text-black font-sans text-sm mb-4">
-                {joinOrder && (
-                  <>
-                    <span className="font-bold">USER #{joinOrder}</span>
-                    {' • '}
-                  </>
-                )}
-                joined {joinedDate}
-              </div>
-              
-              {/* GitHub Link */}
-              <div className="mb-4">
-                <a
-                  href={`https://github.com/${user.username}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-block border-2 border-black bg-black text-white px-4 py-2 font-sans font-bold shadow-neobrutalism hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-neobrutalism-sm transition-all"
-                >
-                  VIEW ON GITHUB →
-                </a>
-              </div>
-              
-              {/* Rankings */}
-              <div className="flex gap-4 flex-wrap">
-                {ranks.week && (
-                  <div className="border-2 border-black bg-blue px-4 py-2 text-white font-sans font-bold shadow-neobrutalism">
-                    #{ranks.week} THIS WEEK
+
+            {/* Stat Grid - 2x2 */}
+            <div className="grid grid-cols-2 gap-4">
+              <HoverCard>
+                <HoverCardTrigger asChild>
+                  <Card className="cursor-help">
+                    <CardHeader>
+                      <CardTitle className="text-sm text-foreground/80">This Week</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-mono font-bold">{stats?.week_commits?.toLocaleString() || '0'}</div>
+                    </CardContent>
+                  </Card>
+                </HoverCardTrigger>
+                <HoverCardContent>
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-semibold">This Week</h4>
+                    <p className="text-sm text-foreground/80">
+                      Total GitHub commits from the last 7 days. This is the primary metric for weekly rankings.
+                    </p>
                   </div>
-                )}
-                {ranks.month && (
-                  <div className="border-2 border-black bg-green px-4 py-2 text-white font-sans font-bold shadow-neobrutalism">
-                    #{ranks.month} THIS MONTH
+                </HoverCardContent>
+              </HoverCard>
+              <HoverCard>
+                <HoverCardTrigger asChild>
+                  <Card className="cursor-help">
+                    <CardHeader>
+                      <CardTitle className="text-sm text-foreground/80">This Month</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-mono font-bold">{stats?.month_commits?.toLocaleString() || '0'}</div>
+                    </CardContent>
+                  </Card>
+                </HoverCardTrigger>
+                <HoverCardContent>
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-semibold">This Month</h4>
+                    <p className="text-sm text-foreground/80">
+                      Total GitHub commits from the last 30 days. Used for monthly and all-time rankings.
+                    </p>
                   </div>
-                )}
-                {ranks.allTime && (
-                  <div className="border-2 border-black bg-yellow px-4 py-2 text-black font-sans font-bold shadow-neobrutalism">
-                    #{ranks.allTime} ALL TIME
+                </HoverCardContent>
+              </HoverCard>
+              <HoverCard>
+                <HoverCardTrigger asChild>
+                  <Card className="cursor-help">
+                    <CardHeader>
+                      <CardTitle className="text-sm text-foreground/80">This Year</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-mono font-bold">{stats?.year_commits?.toLocaleString() || '0'}</div>
+                    </CardContent>
+                  </Card>
+                </HoverCardTrigger>
+                <HoverCardContent>
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-semibold">This Year</h4>
+                    <p className="text-sm text-foreground/80">
+                      Total GitHub commits since January 1st of the current year. Shows annual contribution activity.
+                    </p>
                   </div>
-                )}
-              </div>
+                </HoverCardContent>
+              </HoverCard>
+              <HoverCard>
+                <HoverCardTrigger asChild>
+                  <Card className="cursor-help">
+                    <CardHeader>
+                      <CardTitle className="text-sm text-foreground/80">All Time</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-mono font-bold">{stats?.all_time_commits?.toLocaleString() || '0'}</div>
+                    </CardContent>
+                  </Card>
+                </HoverCardTrigger>
+                <HoverCardContent>
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-semibold">All Time</h4>
+                    <p className="text-sm text-foreground/80">
+                      Total GitHub commits across your entire GitHub history. This is your lifetime contribution count.
+                    </p>
+                  </div>
+                </HoverCardContent>
+              </HoverCard>
             </div>
-          </div>
-        </div>
 
-        {/* Big Stat - Yellow Hero Card */}
-        <div className="mb-8 border-2 border-black bg-yellow p-8 shadow-neobrutalism">
-          {hasStats ? (
-            <>
-              <div className="text-7xl font-heading font-black text-black mb-2">
-                {stats.year_commits ? `${stats.year_commits.toLocaleString()}` : (stats.all_time_commits ? `${stats.all_time_commits.toLocaleString()}` : '0')}
-              </div>
-              <div className="text-black font-sans font-bold text-lg">
-                {stats.year_commits ? 'commits this year' : (stats.all_time_commits ? 'all-time commits' : 'no stats yet')}
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="text-7xl font-heading font-black text-black mb-2">
-                —
-              </div>
-              <div className="text-black font-sans font-bold text-lg">No stats yet</div>
-            </>
-          )}
-        </div>
-
-        {/* Stat Cards */}
-        <div className="grid grid-cols-4 gap-4 mb-8">
-          {stats && (stats.week_commits || stats.month_commits || stats.year_commits || stats.all_time_commits) ? (
-            <>
-              <StatCard label="THIS WEEK" value={`${stats.week_commits || 0}`} accentColor="blue" />
-              <StatCard label="THIS MONTH" value={`${stats.month_commits || 0}`} accentColor="green" />
-              <StatCard label="THIS YEAR" value={`${stats.year_commits || 0}`} accentColor="yellow" />
-              <StatCard label="ALL TIME" value={`${stats.all_time_commits || 0}`} accentColor="red" />
-            </>
-          ) : (
-            <>
-              <StatCard label="—" value="—" accentColor="blue" />
-              <StatCard label="—" value="—" accentColor="green" />
-              <StatCard label="—" value="—" accentColor="yellow" />
-              <StatCard label="—" value="—" accentColor="red" />
-            </>
-          )}
-        </div>
-
-        {/* Additional Stats */}
-        <div className="grid grid-cols-4 gap-4 mb-8">
-          {stats && (stats.github_followers || stats.github_stars || stats.github_streak_days) ? (
-            <>
-              <StatCard label="FOLLOWERS" value={`${stats.github_followers || 0}`} accentColor="blue" />
-              <StatCard label="STARS" value={`${stats.github_stars || 0}`} accentColor="green" />
-              <StatCard label="STREAK" value={`${stats.github_streak_days || stats.streak_days || 0}d`} accentColor="yellow" />
-              <StatCard label="REPOS" value={`${stats.github_public_repos || 0}`} accentColor="red" />
-            </>
-          ) : (
-            <>
-              <StatCard label="—" value="—" accentColor="blue" />
-              <StatCard label="—" value="—" accentColor="green" />
-              <StatCard label="—" value="—" accentColor="yellow" />
-              <StatCard label="—" value="—" accentColor="red" />
-            </>
-          )}
-        </div>
-
-        {/* Streak and Badges */}
-        {stats && (
-          <div className="flex gap-4 mb-8 flex-wrap">
-            {(stats.streak_days && stats.streak_days > 0) || (stats.github_streak_days && stats.github_streak_days > 0) ? (
-              <div className="border-2 border-black bg-red px-4 py-2 text-white font-sans font-bold shadow-neobrutalism">
-                🔥 {stats.streak_days || stats.github_streak_days || 0} day streak
-              </div>
-            ) : null}
-            {(stats.top_language || stats.github_top_language) && (
-              <div className="border-2 border-black bg-blue px-4 py-2 text-white font-sans font-bold shadow-neobrutalism">
-                {stats.top_language || stats.github_top_language}
-              </div>
+            {/* Charts */}
+            {dailyData.length > 0 && (
+              <ContributionBarChart data={dailyData.map((day: { date: string; count: number }) => ({
+                date: day.date,
+                count: day.count,
+              }))} />
             )}
-            {stats.top_project && (
-              <div className="border-2 border-black bg-green px-4 py-2 text-white font-sans font-bold shadow-neobrutalism">
-                {stats.top_project}
-              </div>
+
+            {languageData.length > 0 && (
+              <LanguageDonutChart 
+                languages={languageData.map((lang: { name: string; size: number; percentage: number }) => ({
+                  name: lang.name,
+                  size: lang.size,
+                  percentage: lang.percentage,
+                }))}
+                totalContributions={totalContributions}
+              />
             )}
           </div>
-        )}
-
-        {/* Daily Chart */}
-        {stats && stats.daily_breakdown && Array.isArray(stats.daily_breakdown) && stats.daily_breakdown.length > 0 && (
-          <div className="mb-8">
-            <ContributionBarChart data={stats.daily_breakdown as Array<{ date: string; count: number }>} />
-          </div>
-        )}
-
-        {/* Language Chart */}
-        {stats && stats.language_breakdown && Array.isArray(stats.language_breakdown) && stats.language_breakdown.length > 0 && (
-          <div className="mb-8">
-            <LanguageDonutChart 
-              languages={stats.language_breakdown as Array<{ name: string; percentage: number; size: number }>}
-              totalContributions={(stats.week_commits || 0) + (stats.week_prs || 0)}
-            />
-          </div>
-        )}
-
-        {/* Verified Badge */}
-        {stats && stats.github_commits && (
-          <div className="flex items-center gap-2 text-black font-sans font-bold border-2 border-black bg-white px-4 py-2 shadow-neobrutalism inline-block">
-            <span className="text-black">✓</span>
-            <span>VERIFIED VIA GITHUB</span>
-          </div>
-        )}
+        </div>
       </div>
     </div>
   )

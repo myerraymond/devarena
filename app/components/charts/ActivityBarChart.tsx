@@ -1,6 +1,8 @@
 'use client'
 
-import { Bar, BarChart, CartesianGrid, XAxis, Rectangle } from 'recharts'
+import { useEffect, useState } from 'react'
+import { Bar, BarChart, CartesianGrid, XAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 interface ActivityData {
   date: string
@@ -13,6 +15,12 @@ interface ActivityBarChartProps {
 }
 
 export default function ActivityBarChart({ data }: ActivityBarChartProps) {
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   // Format data for recharts
   const chartData = data.map((day) => {
     const date = new Date(day.date)
@@ -24,34 +32,76 @@ export default function ActivityBarChart({ data }: ActivityBarChartProps) {
     }
   })
 
+  if (!mounted) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Commits & PRs</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="w-full h-[300px] flex items-center justify-center">
+            <div className="text-sm text-muted-foreground">Loading chart...</div>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-background border border-border rounded-md p-2 shadow-md">
+          <p className="text-sm font-medium mb-1">{payload[0].payload.date}</p>
+          {payload.map((entry: any, index: number) => (
+            <p key={index} className="text-sm" style={{ color: entry.color }}>
+              {entry.name}: {entry.value}
+            </p>
+          ))}
+        </div>
+      )
+    }
+    return null
+  }
+
   return (
-    <div className="border-2 border-black bg-white p-6 shadow-neobrutalism">
-      <h3 className="text-black text-lg mb-4 font-heading font-black">COMMITS & PRs</h3>
-      <div className="w-full">
-        <BarChart width={600} height={300} data={chartData}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#000" strokeWidth={1} />
-          <XAxis 
-            dataKey="day" 
-            tick={{ fill: '#000', fontSize: 12, fontWeight: 'bold' }}
-            tickLine={{ stroke: '#000', strokeWidth: 2 }}
-            axisLine={{ stroke: '#000', strokeWidth: 2 }}
-          />
-          <Bar 
-            dataKey="commits" 
-            fill="#05E17A"
-            stroke="#000"
-            strokeWidth={2}
-            radius={[4, 4, 0, 0]}
-          />
-          <Bar 
-            dataKey="prs" 
-            fill="#5294FF"
-            stroke="#000"
-            strokeWidth={2}
-            radius={[4, 4, 0, 0]}
-          />
-        </BarChart>
-      </div>
-    </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>Commits & PRs</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="w-full">
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted))" vertical={false} />
+              <XAxis 
+                dataKey="day" 
+                tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                tickLine={false}
+                axisLine={{ stroke: 'hsl(var(--border))' }}
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend 
+                wrapperStyle={{ paddingTop: '20px' }}
+                iconType="circle"
+              />
+              <Bar 
+                dataKey="commits" 
+                fill="#22c55e"
+                name="Commits"
+                radius={[6, 6, 0, 0]}
+                maxBarSize={40}
+              />
+              <Bar 
+                dataKey="prs" 
+                fill="#3b82f6"
+                name="PRs"
+                radius={[6, 6, 0, 0]}
+                maxBarSize={40}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </CardContent>
+    </Card>
   )
 }

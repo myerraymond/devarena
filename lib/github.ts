@@ -4,6 +4,7 @@ interface GitHubContributions {
       totalCommitContributions: number
       totalPullRequestContributions: number
       totalPullRequestReviewContributions: number
+      totalIssueContributions: number
       totalRepositoriesWithContributedCommits: number
       contributionCalendar: {
         totalContributions: number
@@ -46,10 +47,17 @@ interface BuilderScore {
   monthScore: number
   weekCommits: number
   weekPRs: number
+  weekPRReviews: number
+  weekIssues: number
+  weekContributions: number
   monthCommits: number
   monthPRs: number
+  monthPRReviews: number
+  monthIssues: number
+  monthContributions: number
   yearCommits: number
   allTimeCommits: number
+  allTimeContributions: number
   streak: number
   topLanguage: string | null
   languageBreakdown: LanguageBreakdown[]
@@ -260,6 +268,7 @@ export async function getGitHubStats(accessToken: string): Promise<BuilderScore>
           totalCommitContributions
           totalPullRequestContributions
           totalPullRequestReviewContributions
+          totalIssueContributions
           totalRepositoriesWithContributedCommits
           contributionCalendar {
             weeks {
@@ -281,6 +290,7 @@ export async function getGitHubStats(accessToken: string): Promise<BuilderScore>
           totalCommitContributions
           totalPullRequestContributions
           totalPullRequestReviewContributions
+          totalIssueContributions
           totalRepositoriesWithContributedCommits
           contributionCalendar {
             weeks {
@@ -370,14 +380,20 @@ export async function getGitHubStats(accessToken: string): Promise<BuilderScore>
 
   const weekCommits = weekContributions?.totalCommitContributions || 0
   const weekPRs = weekContributions?.totalPullRequestContributions || 0
-  const weekPRsMerged = weekContributions?.totalPullRequestReviewContributions || 0
+  const weekPRReviews = weekContributions?.totalPullRequestReviewContributions || 0
+  const weekIssues = weekContributions?.totalIssueContributions || 0
+  // Calculate total contributions by summing all types
+  const weekContributionsTotal = weekCommits + weekPRs + weekPRReviews + weekIssues
   const weekReposContributed = weekContributions?.totalRepositoriesWithContributedCommits || 0
   const weekDays = weekContributions?.contributionCalendar.weeks.flatMap((w) => w.contributionDays) || []
   const weekActiveDays = countActiveDays(weekDays, sevenDaysAgo, today)
 
   const monthCommits = monthContributions?.totalCommitContributions || 0
   const monthPRs = monthContributions?.totalPullRequestContributions || 0
-  const monthPRsMerged = monthContributions?.totalPullRequestReviewContributions || 0
+  const monthPRReviews = monthContributions?.totalPullRequestReviewContributions || 0
+  const monthIssues = monthContributions?.totalIssueContributions || 0
+  // Calculate total contributions by summing all types
+  const monthContributionsTotal = monthCommits + monthPRs + monthPRReviews + monthIssues
   const monthReposContributed = monthContributions?.totalRepositoriesWithContributedCommits || 0
   const monthDays = monthContributions?.contributionCalendar.weeks.flatMap((w) => w.contributionDays) || []
   const monthActiveDays = countActiveDays(monthDays, thirtyDaysAgo, today)
@@ -389,12 +405,13 @@ export async function getGitHubStats(accessToken: string): Promise<BuilderScore>
   // For true all-time, we'd need to use the REST API, but GraphQL gives us the last year
   // We'll use the one-year total as "all-time" since that's the best we can get from GraphQL
   const allTimeCommits = contributions.totalCommitContributions || 0
+  const allTimeContributions = calendar.totalContributions || 0
 
-  // Calculate builder scores
+  // Calculate builder scores (using commits, PRs opened, PR reviews, active days, repos)
   const weekScore = calculateBuilderScore(
     weekCommits,
     weekPRs,
-    weekPRsMerged,
+    weekPRReviews,
     weekActiveDays,
     weekReposContributed
   )
@@ -402,7 +419,7 @@ export async function getGitHubStats(accessToken: string): Promise<BuilderScore>
   const monthScore = calculateBuilderScore(
     monthCommits,
     monthPRs,
-    monthPRsMerged,
+    monthPRReviews,
     monthActiveDays,
     monthReposContributed
   )
@@ -484,10 +501,17 @@ export async function getGitHubStats(accessToken: string): Promise<BuilderScore>
     monthScore,
     weekCommits,
     weekPRs,
+    weekPRReviews,
+    weekIssues,
+    weekContributions: weekContributionsTotal,
     monthCommits,
     monthPRs,
+    monthPRReviews,
+    monthIssues,
+    monthContributions: monthContributionsTotal,
     yearCommits,
     allTimeCommits,
+    allTimeContributions,
     streak,
     topLanguage,
     languageBreakdown,

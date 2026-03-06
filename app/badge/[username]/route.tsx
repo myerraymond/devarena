@@ -30,20 +30,21 @@ export async function GET(
           <div
             style={{
               display: 'flex',
+              flexDirection: 'column',
               width: '100%',
               height: '100%',
-              backgroundColor: '#fff',
-              border: '4px solid #000',
-              fontFamily: 'Archivo, sans-serif',
+              backgroundColor: '#ffffff',
+              border: '1px solid #e2e8f0',
+              fontFamily: 'system-ui, sans-serif',
+              padding: '12px 16px',
+              justifyContent: 'center',
             }}
           >
-            <div style={{ display: 'flex', flexDirection: 'column', padding: '20px', justifyContent: 'center' }}>
-              <div style={{ fontSize: '24px', fontWeight: '900', color: '#000', marginBottom: '8px' }}>
-                DEVARENA
-              </div>
-              <div style={{ fontSize: '16px', fontWeight: '700', color: '#666' }}>
-                User not found
-              </div>
+            <div style={{ display: 'flex', fontSize: '14px', fontWeight: '600', color: '#0f172a', marginBottom: '4px' }}>
+              DevArena
+            </div>
+            <div style={{ display: 'flex', fontSize: '12px', fontWeight: '400', color: '#64748b' }}>
+              User not found
             </div>
           </div>
         ),
@@ -67,8 +68,6 @@ export async function GET(
     const commits = latestStats?.week_commits || 0
     const weekScore = latestStats?.week_score || 0
 
-    // For badge, we'll show score instead of rank to keep it fast
-    // Rank calculation would require fetching all users which is expensive
     const username = (publicUser as any).github_username || publicUser.username
 
     return new ImageResponse(
@@ -76,44 +75,58 @@ export async function GET(
         <div
           style={{
             display: 'flex',
+            flexDirection: 'row',
             width: '100%',
             height: '100%',
-            backgroundColor: '#fff',
-            border: '4px solid #000',
-            boxShadow: '4px 4px 0px #000',
-            fontFamily: 'Archivo, sans-serif',
+            backgroundColor: '#ffffff',
+            border: '1px solid #e2e8f0',
+            borderRadius: '6px',
+            fontFamily: 'system-ui, sans-serif',
             padding: '12px 16px',
+            alignItems: 'center',
+            gap: '12px',
           }}
         >
-          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '4px' }}>
+          {/* User Avatar */}
+          <img
+            src={`https://github.com/${username}.png`}
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              display: 'flex',
+            }}
+          />
+          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '4px', flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div style={{ fontSize: '18px', fontWeight: '900', color: '#000' }}>
-                DEVARENA
+              <div style={{ display: 'flex', fontSize: '14px', fontWeight: '600', color: '#0f172a' }}>
+                DevArena
               </div>
               {weekScore > 0 && (
                 <div
                   style={{
-                    fontSize: '12px',
-                    fontWeight: '900',
-                    color: '#000',
-                    backgroundColor: '#FACC00',
+                    display: 'flex',
+                    fontSize: '11px',
+                    fontWeight: '500',
+                    color: '#64748b',
+                    backgroundColor: '#f1f5f9',
                     padding: '2px 6px',
-                    border: '2px solid #000',
+                    borderRadius: '4px',
                   }}
                 >
                   {weekScore} pts
                 </div>
               )}
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '12px', fontWeight: '700', color: '#000' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '11px', fontWeight: '400', color: '#64748b' }}>
               {streak > 0 && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <span>🔥</span>
-                  <span>{streak}d</span>
+                  <span style={{ display: 'flex' }}>🔥</span>
+                  <span style={{ display: 'flex' }}>{streak}d</span>
                 </div>
               )}
               {commits > 0 && (
-                <div>
+                <div style={{ display: 'flex' }}>
                   {commits} commits
                 </div>
               )}
@@ -134,18 +147,20 @@ export async function GET(
         <div
           style={{
             display: 'flex',
+            flexDirection: 'column',
             width: '100%',
             height: '100%',
-            backgroundColor: '#fff',
-            border: '4px solid #000',
-            fontFamily: 'Archivo, sans-serif',
-            padding: '20px',
+            backgroundColor: '#ffffff',
+            border: '1px solid #e2e8f0',
+            borderRadius: '6px',
+            fontFamily: 'system-ui, sans-serif',
+            padding: '12px 16px',
             justifyContent: 'center',
             alignItems: 'center',
           }}
         >
-          <div style={{ fontSize: '16px', fontWeight: '700', color: '#000' }}>
-            DEVARENA
+          <div style={{ display: 'flex', fontSize: '14px', fontWeight: '600', color: '#0f172a' }}>
+            DevArena
           </div>
         </div>
       ),

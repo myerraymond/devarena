@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useMemo, useState } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import LeaderboardTabs from './LeaderboardTabs'
 import LeaderboardTable from './LeaderboardTable'
 import LeaderboardSkeleton from './LeaderboardSkeleton'
@@ -16,105 +16,133 @@ interface LeaderboardClientProps {
 }
 
 export default function LeaderboardClient({ 
-  data,
+  data: initialData,
   timeframe,
   isCached = false
 }: LeaderboardClientProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [isTransitioning, setIsTransitioning] = useState(false)
+  const [allData, setAllData] = useState<LeaderboardData[]>(initialData)
+  const [isLoading, setIsLoading] = useState(false)
+  const [hasMore, setHasMore] = useState(initialData.length >= 50)
+  const [page, setPage] = useState(1)
+  const observerTarget = useRef<HTMLDivElement>(null)
 
-  // Filter and sort data client-side based on timeframe
-  const filteredData = useMemo(() => {
-    const dataWithHours = data.map(entry => {
-      let hours = 0
-      let commits = 0
-      switch (timeframe) {
-        case 'week':
-          hours = entry.weekHours
-          commits = entry.weekCommits || entry.commits || 0
-          break
-        case 'month':
-          hours = entry.monthHours
-          commits = entry.monthCommits || entry.commits || 0
-          break
-        case 'alltime':
-          hours = entry.allTimeHours
-          commits = entry.allTimeCommits || entry.yearCommits || entry.commits || 0
-          break
+  // Load more data when scrolling
+  const loadMore = useCallback(async () => {
+    if (isLoading || !hasMore) return
+
+    setIsLoading(true)
+    try {
+      const params = new URLSearchParams()
+      params.set('timeframe', timeframe)
+      params.set('page', String(page + 1))
+      params.set('limit', '50')
+
+      const response = await fetch(`/api/leaderboard?${params.toString()}`)
+      if (!response.ok) {
+        throw new Error('Failed to fetch')
       }
-      return { ...entry, hours, commits }
-    })
+      
+      const result = await response.json()
 
-    return dataWithHours
-      // Show users with any activity (scores, commits, etc)
-      .filter((entry) => {
-        const hasScore = (entry.weekScore !== null && entry.weekScore !== undefined && entry.weekScore > 0) || 
-                        (entry.monthScore !== null && entry.monthScore !== undefined && entry.monthScore > 0)
-        const hasCommits = entry.commits !== null && entry.commits > 0
-        return hasScore || hasCommits
-      })
-      .sort((a, b) => {
-        // Sort by builder score (week_score for week, month_score for month/alltime)
-        let scoreA = 0
-        let scoreB = 0
+      if (result.data && result.data.length > 0) {
+        // Avoid duplicates by checking usernames
+        const existingUsernames = new Set(allData.map(d => d.username))
+        const newData = result.data.filter((item: LeaderboardData) => !existingUsernames.has(item.username))
         
-        if (timeframe === 'week') {
-          scoreA = a.weekScore ?? 0
-          scoreB = b.weekScore ?? 0
+        if (newData.length > 0) {
+          setAllData(prev => [...prev, ...newData])
+          setPage(prev => prev + 1)
+          setHasMore(result.hasMore)
         } else {
-          scoreA = a.monthScore ?? 0
-          scoreB = b.monthScore ?? 0
+          setHasMore(false)
         }
-        
-        // If scores are equal, sort by commits (use the timeframe-specific commits)
-        if (scoreA === scoreB) {
-          const commitsA = a.commits ?? 0
-          const commitsB = b.commits ?? 0
-          return commitsB - commitsA
+      } else {
+        setHasMore(false)
+      }
+    } catch (error) {
+      console.error('Error loading more data:', error)
+      setHasMore(false)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [timeframe, page, isLoading, hasMore, allData])
+
+  // Reset pagination when timeframe changes
+  useEffect(() => {
+    setAllData(initialData)
+    setPage(1)
+    setHasMore(initialData.length >= 50)
+    setIsLoading(false)
+  }, [timeframe, initialData])
+
+  // Intersection Observer for infinite scroll
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !isLoading) {
+          loadMore()
         }
-        
-        return scoreB - scoreA
-      })
-      .slice(0, 50) // Top 50
-      .map((entry, index) => ({
-        ...entry,
-        rank: index + 1,
-      }))
-  }, [data, timeframe])
+      },
+      { threshold: 0.1 }
+    )
+
+    const currentTarget = observerTarget.current
+    if (currentTarget) {
+      observer.observe(currentTarget)
+    }
+
+    return () => {
+      if (currentTarget) {
+        observer.unobserve(currentTarget)
+      }
+    }
+  }, [hasMore, isLoading, loadMore])
 
   const handleTabChange = (tab: Timeframe) => {
     setIsTransitioning(true)
     const params = new URLSearchParams(searchParams.toString())
     params.set('timeframe', tab)
     router.replace(`/?${params.toString()}`, { scroll: false })
-    // Small delay to show transition, then hide
     setTimeout(() => setIsTransitioning(false), 100)
   }
 
   return (
     <>
       {isCached && (
-        <div className="mb-4 border-2 border-black bg-yellow p-3 text-black font-sans font-bold text-sm shadow-neobrutalism">
-          &gt; USING CACHED DATA
+        <div className="mb-4 text-sm text-foreground/80 bg-muted px-4 py-2 rounded-md">
+          Using cached data
         </div>
       )}
       <LeaderboardTabs activeTab={timeframe} onTabChange={handleTabChange} />
 
       {isTransitioning ? (
         <LeaderboardSkeleton />
-      ) : filteredData.length > 0 ? (
-        <LeaderboardTable data={filteredData} />
-      ) : (
-        <div className="text-black text-center py-12 font-sans font-bold border-2 border-black bg-white p-8 shadow-neobrutalism">
-          <div className="text-2xl mb-4">NO BUILDERS YET</div>
-          <div className="text-base mb-4">
-            If you've signed in, make sure to:
+      ) : allData.length > 0 ? (
+        <>
+          <LeaderboardTable data={allData} />
+          {/* Loading trigger element */}
+          <div ref={observerTarget} className="h-20 flex items-center justify-center mt-4">
+            {isLoading && (
+              <div className="flex items-center gap-2 text-sm text-foreground/70">
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-foreground/20 border-t-foreground"></div>
+                Loading more builders...
+              </div>
+            )}
+            {!hasMore && allData.length >= 50 && (
+              <div className="text-sm text-foreground/70 py-4">
+                You&apos;ve reached the end of the leaderboard
+              </div>
+            )}
           </div>
-          <div className="text-sm space-y-2">
-            <div>1. Your profile is set to PUBLIC</div>
-            <div>2. Click "Sync now" in your dashboard</div>
-            <div>3. Wait a few seconds for stats to load</div>
+        </>
+      ) : (
+        <div className="text-center py-12">
+          <div className="text-lg font-medium mb-2">No builders yet</div>
+          <div className="text-sm text-foreground/70">
+            Connect your GitHub to be the first!
           </div>
         </div>
       )}

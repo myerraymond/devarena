@@ -1,19 +1,19 @@
 import type { Metadata } from 'next'
-import { Archivo, DM_Sans } from 'next/font/google'
+import { Inter, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
 import Navbar from './components/Navbar'
 import { SessionProvider } from './components/SessionProvider'
 
-const archivo = Archivo({
+const geistSans = Inter({
   subsets: ['latin'],
-  weight: ['400', '500', '600', '700', '800', '900'],
-  variable: '--font-archivo',
+  variable: '--font-geist-sans',
+  display: 'swap',
 })
 
-const dmSans = DM_Sans({
+const geistMono = JetBrains_Mono({
   subsets: ['latin'],
-  weight: ['400', '500', '700'],
-  variable: '--font-dm-sans',
+  variable: '--font-geist-mono',
+  display: 'swap',
 })
 
 export const metadata: Metadata = {
@@ -28,7 +28,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${archivo.variable} ${dmSans.variable} font-sans antialiased`}>
+      <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}>
         <SessionProvider>
           <Navbar />
           {children}
