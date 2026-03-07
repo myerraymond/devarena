@@ -40,8 +40,22 @@ export async function GET(
               justifyContent: 'center',
             }}
           >
-            <div style={{ display: 'flex', fontSize: '14px', fontWeight: '600', color: '#0f172a', marginBottom: '4px' }}>
-              DevArena
+            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '4px' }}>
+              <div
+                style={{
+                  width: 16,
+                  height: 16,
+                  background: '#0d0d0d',
+                  borderRadius: 4,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}
+              >
+                <span style={{ fontFamily: 'monospace', fontSize: 8, fontWeight: 700, color: '#ffffff', letterSpacing: '-0.5px', lineHeight: 1 }}>~/</span>
+              </div>
+              <span style={{ fontFamily: 'monospace', fontSize: '13px', fontWeight: '600', color: '#0f172a', letterSpacing: '-0.3px' }}>DevArena</span>
             </div>
             <div style={{ display: 'flex', fontSize: '12px', fontWeight: '400', color: '#64748b' }}>
               User not found
@@ -99,8 +113,35 @@ export async function GET(
           />
           <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '4px', flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div style={{ display: 'flex', fontSize: '14px', fontWeight: '600', color: '#0f172a' }}>
-                DevArena
+              <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <div
+                  style={{
+                    width: 16,
+                    height: 16,
+                    background: '#0d0d0d',
+                    borderRadius: 4,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  <span
+                    style={{
+                      fontFamily: 'monospace',
+                      fontSize: 8,
+                      fontWeight: 700,
+                      color: '#ffffff',
+                      letterSpacing: '-0.5px',
+                      lineHeight: 1,
+                    }}
+                  >
+                    ~/
+                  </span>
+                </div>
+                <span style={{ fontFamily: 'monospace', fontSize: '13px', fontWeight: '600', color: '#0f172a', letterSpacing: '-0.3px' }}>
+                  DevArena
+                </span>
               </div>
               {weekScore > 0 && (
                 <div
@@ -159,8 +200,22 @@ export async function GET(
             alignItems: 'center',
           }}
         >
-          <div style={{ display: 'flex', fontSize: '14px', fontWeight: '600', color: '#0f172a' }}>
-            DevArena
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+            <div
+              style={{
+                width: 16,
+                height: 16,
+                background: '#0d0d0d',
+                borderRadius: 4,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <span style={{ fontFamily: 'monospace', fontSize: 8, fontWeight: 700, color: '#ffffff', letterSpacing: '-0.5px', lineHeight: 1 }}>~/</span>
+            </div>
+            <span style={{ fontFamily: 'monospace', fontSize: '13px', fontWeight: '600', color: '#0f172a', letterSpacing: '-0.3px' }}>DevArena</span>
           </div>
         </div>
       ),

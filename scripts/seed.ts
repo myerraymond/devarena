@@ -1,276 +1,628 @@
 import { createClient } from '@supabase/supabase-js'
 import { config } from 'dotenv'
 import { resolve } from 'path'
+import { randomUUID } from 'crypto'
 
-// Load environment variables from .env.local
+// ═══════════════════════════════════════════════════════════
+// ── CONFIG ──
+// ═══════════════════════════════════════════════════════════
+
 config({ path: resolve(process.cwd(), '.env.local') })
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 if (!supabaseUrl || !supabaseKey) {
-  console.error('Missing Supabase environment variables')
-  console.error('Make sure .env.local contains:')
-  console.error('  NEXT_PUBLIC_SUPABASE_URL=...')
-  console.error('  SUPABASE_SERVICE_ROLE_KEY=...')
+  console.error('❌ Missing Supabase environment variables')
+  console.error('   Make sure .env.local contains:')
+  console.error('     NEXT_PUBLIC_SUPABASE_URL=...')
+  console.error('     SUPABASE_SERVICE_ROLE_KEY=...')
   process.exit(1)
 }
 
-const supabase = createClient(supabaseUrl, supabaseKey)
+const supabase = createClient(supabaseUrl, supabaseKey, {
+  auth: { autoRefreshToken: false, persistSession: false },
+})
 
-// List of realistic GitHub usernames
-const usernames = [
-  'alexchen', 'sarahdev', 'mikebuilds', 'jesscode', 'davidsmith',
-  'emilywang', 'chrislee', 'amytaylor', 'ryanmartin', 'lisajones',
-  'kevinbrown', 'nicolewhite', 'brianharris', 'lauradavis', 'tomwilson',
-  'katieanderson', 'jamesmoore', 'rachelgarcia', 'danielrodriguez', 'meganlopez',
-  'robertthomas', 'jenniferjackson', 'williamlee', 'michelleclark', 'josephlewis',
-  'stephanierobinson', 'richardwalker', 'ashleyhall', 'thomasallen', 'jessicayoung',
-  'charlesking', 'amandawright', 'christopherhill', 'melissascott', 'matthewgreen',
-  'stephanieadams', 'anthonybaker', 'michellenelson', 'markcarter', 'samanthamitchell',
-  'joshuaroberts', 'stephanieturner', 'andrewphillips', 'rebeccacampbell', 'ryanparker',
-  'laurenstevens', 'justinwood', 'kellyrogers', 'brandonreed', 'nicolecook',
-  'tylermorgan', 'jenniferbell', 'jacobmurphy', 'sarahbailey', 'ethanrivera',
-  'emilycooper', 'noahrichardson', 'hannahcox', 'loganhoward', 'oliviaward',
-  'lucastorres', 'sophiapeterson', 'aidengray', 'isabellaramirez', 'carterjames',
-  'avawatson', 'jacksonbrooks', 'charlottekelly', 'averybennett', 'harperwood',
-  'graysonross', 'elliegriffin', 'lincolnclark', 'lilyrodriguez', 'wyattlewis',
-  'zoeylee', 'henrywalker', 'chloehall', 'sebastianallen', 'victoriayoung',
-  'julianking', 'gracewright', 'adrianhill', 'nataliescott', 'leogreen',
-  'audreyadams', 'gabrielnelson', 'clairecarter', 'isaacmitchell', 'peneloperoberts',
-  'samuelturner', 'hazelphillips', 'davidcampbell', 'stellaward', 'josephparker',
-  'lucystevens', 'danielwood', 'ariarogers', 'matthewreed', 'scarlettcook',
-  'lukemorgan', 'chloeellbell', 'owenmurphy', 'lillianbailey', 'jackrivera',
-  'emmacook', 'masoncooper', 'abigailrichardson', 'logancox', 'sophiahoward',
+const TOTAL_USERS = 200
+const BATCH_SIZE = 25
+
+// ═══════════════════════════════════════════════════════════
+// ── NAME GENERATION ──
+// ═══════════════════════════════════════════════════════════
+
+const firstNames = [
+  'alex', 'sarah', 'mike', 'jess', 'david', 'emily', 'chris', 'amy',
+  'ryan', 'lisa', 'kevin', 'nicole', 'brian', 'laura', 'tom', 'katie',
+  'james', 'rachel', 'daniel', 'megan', 'robert', 'jennifer', 'william',
+  'michelle', 'joseph', 'stephanie', 'richard', 'ashley', 'thomas',
+  'jessica', 'charles', 'amanda', 'matthew', 'melissa', 'anthony',
+  'mark', 'samantha', 'joshua', 'andrew', 'rebecca', 'tyler', 'jacob',
+  'ethan', 'noah', 'logan', 'lucas', 'aiden', 'carter', 'avery',
+  'jackson', 'grayson', 'lincoln', 'wyatt', 'henry', 'sebastian',
+  'julian', 'leo', 'gabriel', 'isaac', 'samuel', 'david', 'luke',
+  'owen', 'jack', 'mason', 'emma', 'olivia', 'sophia', 'isabella',
+  'harper', 'lily', 'ella', 'grace', 'natalie', 'audrey', 'claire',
+  'victoria', 'hazel', 'stella', 'lucy', 'aria', 'scarlett', 'chloe',
+  'penelope', 'abigail', 'hannah', 'zoey', 'ellie', 'charlotte',
+  'nora', 'mia', 'layla', 'riley', 'zoe', 'elena', 'maya', 'kai',
+  'finn', 'max', 'leo', 'nico', 'remi', 'sage', 'blake', 'quinn',
 ]
 
-// Languages for variety
-const languages = [
-  'TypeScript', 'JavaScript', 'Python', 'Java', 'Go', 'Rust', 'C++', 'C#',
-  'Ruby', 'PHP', 'Swift', 'Kotlin', 'Dart', 'Scala', 'R', 'MATLAB',
-  'Shell', 'HTML', 'CSS', 'Vue', 'React', 'Svelte', 'Angular'
+const lastNames = [
+  'chen', 'smith', 'wang', 'lee', 'jones', 'brown', 'white', 'harris',
+  'davis', 'wilson', 'anderson', 'moore', 'garcia', 'rodriguez', 'lopez',
+  'thomas', 'jackson', 'clark', 'lewis', 'robinson', 'walker', 'hall',
+  'allen', 'young', 'king', 'wright', 'hill', 'scott', 'green', 'adams',
+  'baker', 'nelson', 'carter', 'mitchell', 'roberts', 'turner',
+  'phillips', 'campbell', 'parker', 'stevens', 'wood', 'rogers', 'reed',
+  'cook', 'morgan', 'bell', 'murphy', 'bailey', 'rivera', 'cooper',
+  'richardson', 'cox', 'howard', 'ward', 'torres', 'peterson', 'gray',
+  'ramirez', 'brooks', 'kelly', 'bennett', 'ross', 'griffin', 'patel',
+  'kim', 'liu', 'singh', 'nguyen', 'tanaka', 'sato', 'martinez',
 ]
 
-// Generate random number between min and max
-function random(min: number, max: number): number {
+const displayNames = new Map<string, string>()
+
+function capitalize(s: string) {
+  return s.charAt(0).toUpperCase() + s.slice(1)
+}
+
+function generateUsername(index: number): string {
+  const first = firstNames[index % firstNames.length]
+  const last = lastNames[index % lastNames.length]
+  const pattern = index % 8
+
+  switch (pattern) {
+    case 0: return `${first}${last}`            // alexchen
+    case 1: return `${first}dev`                // sarahdev
+    case 2: return `${first}codes`              // mikecodes
+    case 3: return `${first}builds`             // jessbuilds
+    case 4: return `${first}_${last}`           // david_smith
+    case 5: return `${first}${last}${(index % 99) + 1}` // emilywang42
+    case 6: return `${first}-${last}`           // chris-lee
+    case 7: return `${first}${index}`           // amy7
+    default: return `${first}${last}`
+  }
+}
+
+function generateDisplayName(username: string, index: number): string {
+  const first = firstNames[index % firstNames.length]
+  const last = lastNames[index % lastNames.length]
+  return `${capitalize(first)} ${capitalize(last)}`
+}
+
+// ═══════════════════════════════════════════════════════════
+// ── LANGUAGE DISTRIBUTION ──
+// ═══════════════════════════════════════════════════════════
+
+const LANGUAGE_WEIGHTS: [string, number][] = [
+  ['TypeScript', 40],
+  ['Python', 20],
+  ['JavaScript', 10],
+  ['Rust', 8],
+  ['Go', 6],
+  ['Swift', 4],
+  ['Kotlin', 3],
+  ['Ruby', 2],
+  ['C++', 2],
+  ['Java', 2],
+  ['C#', 1],
+  ['PHP', 1],
+  ['Dart', 0.5],
+  ['Elixir', 0.25],
+  ['Haskell', 0.15],
+  ['Zig', 0.1],
+]
+
+function pickLanguage(): string {
+  const total = LANGUAGE_WEIGHTS.reduce((s, [, w]) => s + w, 0)
+  let r = Math.random() * total
+  for (const [lang, weight] of LANGUAGE_WEIGHTS) {
+    r -= weight
+    if (r <= 0) return lang
+  }
+  return 'TypeScript'
+}
+
+// ═══════════════════════════════════════════════════════════
+// ── PROJECT NAME GENERATION ──
+// ═══════════════════════════════════════════════════════════
+
+const projectPrefixes = [
+  'portfolio', 'saas-starter', 'cli-tool', 'api-server', 'mobile-app',
+  'chrome-extension', 'discord-bot', 'open-source-lib', 'personal-site',
+  'ai-project', 'data-pipeline', 'auth-service', 'chat-app', 'blog-engine',
+  'task-tracker', 'analytics-dash', 'payment-api', 'cms-lite', 'devtools',
+  'config-manager',
+]
+
+function pickProject(username: string): string {
+  if (Math.random() < 0.15) return `${username}-app`
+  return projectPrefixes[Math.floor(Math.random() * projectPrefixes.length)]
+}
+
+// ═══════════════════════════════════════════════════════════
+// ── HELPERS ──
+// ═══════════════════════════════════════════════════════════
+
+function rand(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min
 }
 
-// Generate random date within last N days
-function randomDate(daysAgo: number): Date {
-  const now = new Date()
-  const days = random(0, daysAgo)
-  return new Date(now.getTime() - days * 24 * 60 * 60 * 1000)
+function randFloat(min: number, max: number): number {
+  return Math.random() * (max - min) + min
 }
 
-// Generate stats for a user
-function generateStats() {
-  // Create variation: some users are only active this week, some this month, some all-time
-  const activityType = random(1, 100)
-  
-  let weekCommits = 0
-  let monthCommits = 0
-  let yearCommits = 0
-  let allTimeCommits = 0
-  
-  if (activityType <= 30) {
-    // 30% - Only active this week (new users)
-    weekCommits = random(5, 50)
-    monthCommits = weekCommits // Same as week
-    yearCommits = random(monthCommits, monthCommits * 2)
-    allTimeCommits = yearCommits
-  } else if (activityType <= 60) {
-    // 30% - Active this month but not this week (inactive recently)
-    weekCommits = random(0, 5) // Very few or none this week
-    monthCommits = random(10, 100)
-    yearCommits = random(monthCommits * 2, monthCommits * 10)
-    allTimeCommits = random(yearCommits, yearCommits * 3)
-  } else if (activityType <= 85) {
-    // 25% - Active this month and week (regular users)
-    weekCommits = random(5, 80)
-    monthCommits = random(weekCommits * 2, weekCommits * 6)
-    yearCommits = random(monthCommits * 3, monthCommits * 12)
-    allTimeCommits = random(yearCommits, yearCommits * 4)
-  } else {
-    // 15% - Highly active users (all time)
-    weekCommits = random(20, 150)
-    monthCommits = random(weekCommits * 3, weekCommits * 8)
-    yearCommits = random(monthCommits * 5, monthCommits * 20)
-    allTimeCommits = random(yearCommits * 2, yearCommits * 8)
+/** Random date between `daysAgo` and now */
+function randomDate(daysAgo: number): Date {
+  const now = Date.now()
+  const past = now - daysAgo * 86_400_000
+  return new Date(past + Math.random() * (now - past))
+}
+
+/** Random date within the last N hours for feed events */
+function randomRecentDate(hoursAgo: number): Date {
+  const now = Date.now()
+  const past = now - hoursAgo * 3_600_000
+  return new Date(past + Math.random() * (now - past))
+}
+
+// ═══════════════════════════════════════════════════════════
+// ── TIER DEFINITIONS ──
+// ═══════════════════════════════════════════════════════════
+
+type Tier = 'diamond' | 'platinum' | 'gold' | 'silver' | 'bronze'
+
+interface TierConfig {
+  tier: Tier
+  count: number
+  weekScore: [number, number]
+  streak: [number, number]
+  weekCommits: [number, number]
+  weekPrs: [number, number]
+}
+
+const TIERS: TierConfig[] = [
+  { tier: 'diamond',  count: 10,  weekScore: [800, 1200],  streak: [60, 180],  weekCommits: [40, 80],  weekPrs: [8, 15] },
+  { tier: 'platinum', count: 20,  weekScore: [400, 800],   streak: [20, 60],   weekCommits: [20, 40],  weekPrs: [4, 8] },
+  { tier: 'gold',     count: 40,  weekScore: [200, 400],   streak: [7, 20],    weekCommits: [10, 20],  weekPrs: [1, 4] },
+  { tier: 'silver',   count: 60,  weekScore: [80, 200],    streak: [3, 7],     weekCommits: [5, 10],   weekPrs: [0, 2] },
+  { tier: 'bronze',   count: 70,  weekScore: [0, 80],      streak: [0, 3],     weekCommits: [0, 5],    weekPrs: [0, 0] },
+]
+
+// ═══════════════════════════════════════════════════════════
+// ── USER + STAT GENERATION ──
+// ═══════════════════════════════════════════════════════════
+
+interface SeedUser {
+  id: string
+  username: string
+  display_name: string
+  avatar_url: string
+  github_username: string
+  user_number: number
+  joined_at: string
+  is_public: boolean
+}
+
+interface SeedSnapshot {
+  user_id: string
+  week_score: number
+  month_score: number
+  all_time_score: number
+  week_commits: number
+  week_prs: number
+  month_commits: number
+  month_prs: number
+  week_pr_reviews: number
+  month_pr_reviews: number
+  week_issues: number
+  month_issues: number
+  week_contributions: number
+  month_contributions: number
+  all_time_contributions: number
+  year_commits: number
+  all_time_commits: number
+  streak_days: number
+  github_streak_days: number
+  github_commits: number
+  github_top_language: string
+  top_language: string
+  top_project: string | null
+  github_followers: number
+  github_following: number
+  github_public_repos: number
+  github_stars: number
+  daily_breakdown: Array<{ date: string; count: number }>
+  language_breakdown: Array<{ name: string; size: number; percentage: number }>
+  snapshotted_at: string
+}
+
+function generateDailyBreakdown(avgPerDay: number): Array<{ date: string; count: number }> {
+  const breakdown: Array<{ date: string; count: number }> = []
+  const now = new Date()
+
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(now)
+    d.setDate(now.getDate() - i)
+    const dateStr = d.toISOString().split('T')[0]
+    const dayOfWeek = d.getDay() // 0=Sun, 6=Sat
+
+    // Weekends are ~40% lower
+    const weekendMultiplier = (dayOfWeek === 0 || dayOfWeek === 6) ? 0.6 : 1.0
+    const variance = randFloat(0.4, 1.6)
+    const count = Math.max(0, Math.round(avgPerDay * weekendMultiplier * variance))
+
+    breakdown.push({ date: dateStr, count })
   }
-  
-  // Generate PRs and issues based on commits
-  const weekPRs = weekCommits > 0 ? random(0, Math.floor(weekCommits / 5)) : 0
-  const monthPRs = monthCommits > 0 ? random(weekPRs, Math.max(weekPRs, Math.floor(monthCommits / 5))) : 0
-  const weekPRReviews = weekPRs > 0 ? random(0, weekPRs * 2) : 0
-  const monthPRReviews = monthPRs > 0 ? random(weekPRReviews, Math.max(weekPRReviews, monthPRs * 2)) : 0
-  const weekIssues = weekCommits > 0 ? random(0, Math.floor(weekCommits / 10)) : 0
-  const monthIssues = monthCommits > 0 ? random(weekIssues, Math.max(weekIssues, Math.floor(monthCommits / 10))) : 0
-  
-  const weekContributions = weekCommits + weekPRs + weekPRReviews + weekIssues
-  const monthContributions = monthCommits + monthPRs + monthPRReviews + monthIssues
-  
-  // Calculate builder score - only if user has activity
-  const weekActiveDays = weekCommits > 0 ? random(1, 7) : 0
-  const monthActiveDays = monthCommits > 0 ? random(weekActiveDays, 30) : 0
-  const weekReposContributed = weekCommits > 0 ? random(1, 10) : 0
-  const monthReposContributed = monthCommits > 0 ? random(weekReposContributed, Math.max(weekReposContributed, 15)) : 0
-  
-  const weekScore = weekCommits > 0 
-    ? Math.round((weekCommits * 1) + (weekPRs * 2) + (weekPRs * 4) + (weekActiveDays * 3) + (weekReposContributed * 5))
-    : 0
-  const monthScore = monthCommits > 0
-    ? Math.round((monthCommits * 1) + (monthPRs * 2) + (monthPRs * 4) + (monthActiveDays * 3) + (monthReposContributed * 5))
-    : 0
-  
-  // Generate daily breakdown (last 7 days)
-  const dailyBreakdown = Array.from({ length: 7 }, (_, i) => {
-    const date = new Date()
-    date.setDate(date.getDate() - (6 - i))
-    return {
-      date: date.toISOString().split('T')[0],
-      count: Math.round(random(0, Math.floor(weekCommits / 3)))
-    }
-  })
-  
-  // Generate language breakdown
-  const numLanguages = random(1, 5)
-  const languageBreakdown = Array.from({ length: numLanguages }, (_, i) => {
-    const lang = languages[random(0, languages.length - 1)]
-    const size = random(100, 10000)
-    return {
-      name: lang,
-      size: Math.round(size),
-      percentage: i === 0 ? random(40, 80) : random(5, 30)
-    }
-  })
-  
-  // Normalize percentages and ensure they're integers
-  const totalPercentage = languageBreakdown.reduce((sum, lang) => sum + lang.percentage, 0)
-  if (totalPercentage > 0) {
-    languageBreakdown.forEach(lang => {
-      lang.percentage = Math.round((lang.percentage / totalPercentage) * 100)
-    })
+  return breakdown
+}
+
+function generateLanguageBreakdown(topLanguage: string): Array<{ name: string; size: number; percentage: number }> {
+  const others = LANGUAGE_WEIGHTS
+    .map(([l]) => l)
+    .filter(l => l !== topLanguage)
+    .sort(() => Math.random() - 0.5)
+    .slice(0, rand(1, 3))
+
+  const topPct = rand(45, 80)
+  let remaining = 100 - topPct
+  const result = [{ name: topLanguage, size: rand(50000, 500000), percentage: topPct }]
+
+  for (let i = 0; i < others.length; i++) {
+    const pct = i === others.length - 1 ? remaining : rand(5, Math.min(remaining - 5, 30))
+    remaining -= pct
+    result.push({ name: others[i], size: rand(5000, 100000), percentage: pct })
   }
-  
-  const streak = random(0, 45)
-  const followers = random(0, 5000)
-  const stars = random(0, 10000)
-  const publicRepos = random(1, 50)
-  const topLanguage = languageBreakdown[0]?.name || languages[random(0, languages.length - 1)]
-  
-  return {
+
+  return result
+}
+
+function buildUserAndStats(
+  index: number,
+  tierConfig: TierConfig,
+  userNumber: number,
+): { user: SeedUser; snapshot: SeedSnapshot } {
+  const username = generateUsername(index)
+  const displayName = generateDisplayName(username, index)
+  const topLanguage = pickLanguage()
+  const topProject = pickProject(username)
+
+  const weekScore = rand(...tierConfig.weekScore)
+  const streakDays = rand(...tierConfig.streak)
+  const weekCommits = rand(...tierConfig.weekCommits)
+  const weekPrs = rand(...tierConfig.weekPrs)
+
+  // Derive other stats from base
+  const monthMultiplier = randFloat(3, 4.5)
+  const monthScore = Math.round(weekScore * monthMultiplier)
+  const allTimeScore = Math.round(monthScore * randFloat(4, 8))
+  const monthCommits = Math.round(weekCommits * monthMultiplier)
+  const monthPrs = Math.round(weekPrs * monthMultiplier)
+  const weekPrReviews = rand(0, Math.max(0, Math.floor(weekPrs * 0.8)))
+  const monthPrReviews = Math.round(weekPrReviews * monthMultiplier)
+  const weekIssues = rand(0, Math.max(0, Math.floor(weekCommits / 10)))
+  const monthIssues = Math.round(weekIssues * monthMultiplier)
+  const weekContributions = weekCommits + weekPrs + weekPrReviews + weekIssues
+  const monthContributions = monthCommits + monthPrs + monthPrReviews + monthIssues
+  const yearCommits = Math.round(monthCommits * randFloat(8, 14))
+  const allTimeCommits = Math.round(yearCommits * randFloat(1.5, 4))
+  const allTimeContributions = Math.round(allTimeCommits * randFloat(1.2, 1.5))
+
+  const avgPerDay = weekCommits > 0 ? weekCommits / 7 : 0
+  const dailyBreakdown = generateDailyBreakdown(avgPerDay)
+  const languageBreakdown = generateLanguageBreakdown(topLanguage)
+
+  const user: SeedUser = {
+    id: randomUUID(),
+    username,
+    display_name: displayName,
+    avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`,
+    github_username: username,
+    user_number: userNumber,
+    joined_at: randomDate(180).toISOString(), // Last 6 months
+    is_public: Math.random() < 0.95,
+  }
+
+  const snapshot: SeedSnapshot = {
+    user_id: user.id,
+    week_score: weekScore,
+    month_score: monthScore,
+    all_time_score: allTimeScore,
     week_commits: weekCommits,
+    week_prs: weekPrs,
     month_commits: monthCommits,
-    year_commits: yearCommits,
-    all_time_commits: allTimeCommits,
-    week_prs: weekPRs,
-    month_prs: monthPRs,
-    week_pr_reviews: weekPRReviews,
-    month_pr_reviews: monthPRReviews,
+    month_prs: monthPrs,
+    week_pr_reviews: weekPrReviews,
+    month_pr_reviews: monthPrReviews,
     week_issues: weekIssues,
     month_issues: monthIssues,
     week_contributions: weekContributions,
     month_contributions: monthContributions,
-    all_time_contributions: Math.round(allTimeCommits + (allTimeCommits * 0.3)),
-    week_score: weekScore,
-    month_score: monthScore,
-    streak_days: streak,
-    github_streak_days: streak,
-    github_followers: followers,
-    github_stars: stars,
-    github_public_repos: publicRepos,
+    all_time_contributions: allTimeContributions,
+    year_commits: yearCommits,
+    all_time_commits: allTimeCommits,
+    streak_days: streakDays,
+    github_streak_days: streakDays,
+    github_commits: allTimeCommits,
     github_top_language: topLanguage,
     top_language: topLanguage,
+    top_project: topProject,
+    github_followers: rand(0, tierConfig.tier === 'diamond' ? 5000 : tierConfig.tier === 'platinum' ? 2000 : 500),
+    github_following: rand(10, 300),
+    github_public_repos: rand(3, 60),
+    github_stars: rand(0, tierConfig.tier === 'diamond' ? 3000 : 200),
     daily_breakdown: dailyBreakdown,
     language_breakdown: languageBreakdown,
+    snapshotted_at: new Date().toISOString(),
   }
+
+  return { user, snapshot }
 }
 
-async function seedUsers() {
-  console.log(`🌱 Starting to seed ${usernames.length} users...`)
-  
-  const users = []
-  const stats = []
-  
-  for (let i = 0; i < usernames.length; i++) {
-    const username = usernames[i]
-    const joinedAt = randomDate(365) // Joined within last year
-    
-    const userData = {
-      github_username: username,
-      username: username,
-      display_name: username.charAt(0).toUpperCase() + username.slice(1),
-      avatar_url: `https://github.com/${username}.png`,
-      is_public: true,
-      joined_at: joinedAt.toISOString(),
+// ═══════════════════════════════════════════════════════════
+// ── FEED EVENT GENERATION ──
+// ═══════════════════════════════════════════════════════════
+
+interface FeedEvent {
+  user_id: string
+  event_type: string
+  payload: Record<string, unknown>
+  created_at: string
+}
+
+function generateFeedEvents(
+  users: SeedUser[],
+  snapshots: SeedSnapshot[],
+  tiers: Map<string, Tier>,
+): FeedEvent[] {
+  const events: FeedEvent[] = []
+  const snapshotMap = new Map(snapshots.map(s => [s.user_id, s]))
+
+  // Streak milestones for top users
+  const streakMilestones = [7, 14, 30, 50, 100]
+  const topUsers = users
+    .filter(u => {
+      const s = snapshotMap.get(u.id)
+      return s && s.streak_days >= 7
+    })
+    .sort((a, b) => (snapshotMap.get(b.id)?.streak_days || 0) - (snapshotMap.get(a.id)?.streak_days || 0))
+    .slice(0, 15)
+
+  for (const user of topUsers) {
+    const streak = snapshotMap.get(user.id)!.streak_days
+    // Find the highest milestone they've crossed
+    const milestone = [...streakMilestones].reverse().find(m => streak >= m)
+    if (milestone) {
+      events.push({
+        user_id: user.id,
+        event_type: 'streak_milestone',
+        payload: { streak_days: milestone },
+        created_at: randomRecentDate(168).toISOString(),
+      })
     }
-    
-    users.push(userData)
   }
-  
-  // Insert users in batches to avoid overwhelming the database
-  console.log('📝 Inserting users...')
-  const batchSize = 20
-  const insertedUsers: any[] = []
-  
-  for (let i = 0; i < users.length; i += batchSize) {
-    const batch = users.slice(i, i + batchSize)
-    const { data: batchUsers, error: userError } = await supabase
-      .from('users')
-      .upsert(batch, { onConflict: 'github_username' })
-      .select()
-    
-    if (userError) {
-      console.error(`❌ Error inserting batch ${i / batchSize + 1}:`, userError)
-      continue
+
+  // Language king events — one per unique language among top users
+  const langKings = new Map<string, { userId: string; score: number }>()
+  for (const snap of snapshots) {
+    if (!snap.top_language) continue
+    const current = langKings.get(snap.top_language)
+    if (!current || snap.week_score > current.score) {
+      langKings.set(snap.top_language, { userId: snap.user_id, score: snap.week_score })
     }
-    
-    if (batchUsers) {
-      insertedUsers.push(...batchUsers)
-    }
-    console.log(`✅ Inserted batch ${i / batchSize + 1} (${batchUsers?.length || 0} users)`)
   }
-  
-  console.log(`✅ Total inserted: ${insertedUsers.length} users`)
-  
-  // Generate stats for each user
-  console.log('📊 Generating stats...')
-  for (const user of insertedUsers) {
-    const userStats = generateStats()
-    stats.push({
-      user_id: user.id,
-      ...userStats,
-      snapshotted_at: new Date().toISOString(),
+  for (const [language, king] of langKings.entries()) {
+    events.push({
+      user_id: king.userId,
+      event_type: 'language_king',
+      payload: { language },
+      created_at: randomRecentDate(168).toISOString(),
     })
   }
-  
-  // Insert stats in batches
-  console.log('💾 Inserting stats...')
-  for (let i = 0; i < stats.length; i += batchSize) {
-    const batch = stats.slice(i, i + batchSize)
-    const { error: statsError } = await supabase
+
+  // Rank milestones for top 10
+  const sortedByScore = [...snapshots]
+    .sort((a, b) => b.week_score - a.week_score)
+    .slice(0, 10)
+  for (let i = 0; i < sortedByScore.length; i++) {
+    events.push({
+      user_id: sortedByScore[i].user_id,
+      event_type: 'rank_milestone',
+      payload: { rank: i + 1 },
+      created_at: randomRecentDate(168).toISOString(),
+    })
+  }
+
+  // first_commit for recently joined users
+  const recentJoiners = users
+    .filter(u => {
+      const joinedDaysAgo = (Date.now() - new Date(u.joined_at).getTime()) / 86_400_000
+      return joinedDaysAgo < 14
+    })
+    .slice(0, 10)
+  for (const user of recentJoiners) {
+    events.push({
+      user_id: user.id,
+      event_type: 'first_commit',
+      payload: {},
+      created_at: randomRecentDate(168).toISOString(),
+    })
+  }
+
+  // Trim to ~50 events, randomized
+  events.sort(() => Math.random() - 0.5)
+  return events.slice(0, 50)
+}
+
+// ═══════════════════════════════════════════════════════════
+// ── MAIN SEED ──
+// ═══════════════════════════════════════════════════════════
+
+async function seed() {
+  console.log('🌱 Seeding DevArena with 200 realistic users...\n')
+
+  // ── 1. Generate all users and snapshots ──
+  const allUsers: SeedUser[] = []
+  const allSnapshots: SeedSnapshot[] = []
+  const userTiers = new Map<string, Tier>()
+  const tierCounts: Record<Tier, number> = { diamond: 0, platinum: 0, gold: 0, silver: 0, bronze: 0 }
+
+  let userIndex = 0
+  const usedUsernames = new Set<string>()
+
+  for (const tierConfig of TIERS) {
+    for (let i = 0; i < tierConfig.count; i++) {
+      // Ensure unique usernames
+      let attempt = 0
+      while (usedUsernames.has(generateUsername(userIndex)) && attempt < 50) {
+        userIndex++
+        attempt++
+      }
+
+      const { user, snapshot } = buildUserAndStats(userIndex, tierConfig, userIndex + 1)
+
+      // Deduplicate
+      if (usedUsernames.has(user.username)) {
+        user.username = `${user.username}${rand(100, 999)}`
+        user.github_username = user.username
+        user.avatar_url = `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`
+      }
+
+      usedUsernames.add(user.username)
+      allUsers.push(user)
+      allSnapshots.push(snapshot)
+      userTiers.set(user.id, tierConfig.tier)
+      tierCounts[tierConfig.tier]++
+      userIndex++
+    }
+  }
+
+  console.log(`   Generated ${allUsers.length} users`)
+  console.log(`   Diamond: ${tierCounts.diamond}, Platinum: ${tierCounts.platinum}, Gold: ${tierCounts.gold}, Silver: ${tierCounts.silver}, Bronze: ${tierCounts.bronze}\n`)
+
+  // ── 2. Insert users in batches ──
+  console.log('📝 Inserting users...')
+  for (let i = 0; i < allUsers.length; i += BATCH_SIZE) {
+    const batch = allUsers.slice(i, i + BATCH_SIZE)
+    const { error } = await supabase
+      .from('users')
+      .upsert(batch, { onConflict: 'github_username' })
+
+    if (error) {
+      console.error(`   ❌ Error inserting user batch ${Math.floor(i / BATCH_SIZE) + 1}:`, error.message)
+      // Try inserting one by one to find the problem
+      for (const u of batch) {
+        const { error: singleErr } = await supabase.from('users').upsert(u, { onConflict: 'github_username' })
+        if (singleErr) console.error(`      ↳ Failed: ${u.username} — ${singleErr.message}`)
+      }
+    }
+  }
+  console.log(`   ✓ Inserted ${allUsers.length} users\n`)
+
+  // ── 3. Insert stats snapshots ──
+  console.log('📊 Inserting stats snapshots...')
+  for (let i = 0; i < allSnapshots.length; i += BATCH_SIZE) {
+    const batch = allSnapshots.slice(i, i + BATCH_SIZE)
+    const { error } = await supabase
       .from('stats_snapshots')
       .insert(batch)
     
-    if (statsError) {
-      console.error(`❌ Error inserting stats batch ${i / batchSize + 1}:`, statsError)
-      continue
+    if (error) {
+      console.error(`   ❌ Error inserting stats batch ${Math.floor(i / BATCH_SIZE) + 1}:`, error.message)
     }
-    console.log(`✅ Inserted stats batch ${i / batchSize + 1} (${batch.length} stats)`)
   }
-  
-  console.log(`✅ Inserted stats for ${stats.length} users`)
-  console.log('🎉 Seeding complete!')
+  console.log(`   ✓ Inserted ${allSnapshots.length} snapshots\n`)
+
+  // ── 4. Create season + league memberships ──
+  console.log('🏆 Creating season and league memberships...')
+
+  // Deactivate any existing seasons
+  await supabase.from('seasons').update({ is_active: false }).eq('is_active', true)
+
+  const seasonId = randomUUID()
+  const { error: seasonError } = await supabase.from('seasons').insert({
+    id: seasonId,
+    name: 'Season 1 · March 2026',
+    starts_at: '2026-03-01T00:00:00Z',
+    ends_at: '2026-03-31T23:59:59Z',
+    is_active: true,
+  })
+  if (seasonError) console.error('   ❌ Season insert error:', seasonError.message)
+  else console.log('   ✓ Created Season 1 · March 2026')
+
+  // Sort users by week_score descending for rank assignment
+  const rankedSnapshots = [...allSnapshots].sort((a, b) => b.week_score - a.week_score)
+
+  const memberships = rankedSnapshots.map((snap, i) => {
+    const tier = userTiers.get(snap.user_id) || 'bronze'
+    return {
+      user_id: snap.user_id,
+      season_id: seasonId,
+      tier,
+      end_rank: i + 1,
+      promoted: null,
+      relegated: null,
+    }
+  })
+
+  for (let i = 0; i < memberships.length; i += BATCH_SIZE) {
+    const batch = memberships.slice(i, i + BATCH_SIZE)
+    const { error } = await supabase.from('league_memberships').insert(batch)
+    if (error) console.error(`   ❌ League membership batch error:`, error.message)
+  }
+  console.log(`   ✓ Assigned ${memberships.length} league memberships\n`)
+
+  // ── 5. Generate feed events ──
+  console.log('📰 Generating feed events...')
+  const feedEvents = generateFeedEvents(allUsers, allSnapshots, userTiers)
+
+  if (feedEvents.length > 0) {
+    const { error: feedError } = await supabase.from('feed_events').insert(feedEvents)
+    if (feedError) console.error('   ❌ Feed events insert error:', feedError.message)
+  }
+  console.log(`   ✓ Created ${feedEvents.length} feed events\n`)
+
+  // ── 6. Log language kings ──
+  const langKings = new Map<string, { username: string; score: number }>()
+  for (let i = 0; i < allSnapshots.length; i++) {
+    const snap = allSnapshots[i]
+    const user = allUsers[i]
+    if (!snap.top_language) continue
+    const current = langKings.get(snap.top_language)
+    if (!current || snap.week_score > current.score) {
+      langKings.set(snap.top_language, { username: user.username, score: snap.week_score })
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // ── SUMMARY ──
+  // ═══════════════════════════════════════════════════════════
+
+  console.log('═'.repeat(50))
+  console.log('✅ SEED COMPLETE')
+  console.log('═'.repeat(50))
+  console.log(`✓ Seeded ${allUsers.length} users`)
+  console.log(`✓ Diamond:  ${tierCounts.diamond}`)
+  console.log(`✓ Platinum: ${tierCounts.platinum}`)
+  console.log(`✓ Gold:     ${tierCounts.gold}`)
+  console.log(`✓ Silver:   ${tierCounts.silver}`)
+  console.log(`✓ Bronze:   ${tierCounts.bronze}`)
+  console.log(`✓ Feed events: ${feedEvents.length}`)
+  console.log(`✓ Language kings:`)
+  for (const [lang, king] of [...langKings.entries()].sort((a, b) => b[1].score - a[1].score)) {
+    console.log(`    👑 ${lang.padEnd(14)} → ${king.username} (${king.score} pts)`)
+  }
+  console.log('')
 }
 
-// Run the seed
-seedUsers()
+seed()
   .then(() => {
     console.log('✨ Done!')
     process.exit(0)
   })
-  .catch((error) => {
-    console.error('💥 Error:', error)
+  .catch((err) => {
+    console.error('💥 Seed failed:', err)
     process.exit(1)
   })

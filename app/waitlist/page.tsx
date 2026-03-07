@@ -22,8 +22,8 @@ export default function WaitlistPage() {
         setSubmitted(true)
         setEmail('')
       }
-    } catch (error) {
-      console.error('Failed to submit:', error)
+    } catch {
+      // Submission failed silently
     } finally {
       setIsSubmitting(false)
     }

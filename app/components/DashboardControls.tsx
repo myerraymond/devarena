@@ -1,34 +1,30 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Image from 'next/image'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Separator } from '@/components/ui/separator'
+import InfoTooltip from '@/components/info-tooltip'
 
 interface DashboardControlsProps {
   username: string
   isPublic: boolean
+  rank?: number | null
+  streak?: number | null
+  league?: string | null
+  score?: number | null
 }
 
-export default function DashboardControls({ username, isPublic }: DashboardControlsProps) {
+export default function DashboardControls({ username, isPublic, rank, streak, league, score }: DashboardControlsProps) {
   const [isPublicState, setIsPublicState] = useState(isPublic)
   const [isToggling, setIsToggling] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [copied, setCopied] = useState(false)
-  const [badgeCopied, setBadgeCopied] = useState(false)
-  const [badgeUrl, setBadgeUrl] = useState('')
-  const [badgeMarkdown, setBadgeMarkdown] = useState('')
   const router = useRouter()
-  
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const url = `${window.location.origin}/badge/${username}`
-      const markdown = `[![DevArena](${url})](${window.location.origin}/u/${username})`
-      setBadgeUrl(url)
-      setBadgeMarkdown(markdown)
-    }
-  }, [username])
 
   const handleShare = async () => {
     const url = `${window.location.origin}/u/${username}`
@@ -36,8 +32,8 @@ export default function DashboardControls({ username, isPublic }: DashboardContr
       await navigator.clipboard.writeText(url)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
-    } catch (error) {
-      console.error('Failed to copy:', error)
+    } catch {
+      // Clipboard API not available
     }
   }
 
@@ -54,8 +50,8 @@ export default function DashboardControls({ username, isPublic }: DashboardContr
         setIsPublicState(!isPublicState)
         router.refresh()
       }
-    } catch (error) {
-      console.error('Failed to toggle:', error)
+    } catch {
+      // Toggle failed silently
     } finally {
       setIsToggling(false)
     }
@@ -76,69 +72,203 @@ export default function DashboardControls({ username, isPublic }: DashboardContr
         router.refresh()
       } else {
         const errorData = await githubResponse.json().catch(() => ({ error: 'Unknown error' }))
-        console.error('Sync failed:', errorData)
         alert(`Sync failed: ${errorData.error || 'Unknown error'}`)
       }
-    } catch (error) {
-      console.error('Failed to sync:', error)
-      alert(`Sync error: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } catch {
+      alert('Sync failed. Please try again.')
     } finally {
       setIsSyncing(false)
     }
   }
 
-  const handleCopyBadge = async () => {
-    try {
-      await navigator.clipboard.writeText(badgeMarkdown)
-      setBadgeCopied(true)
-      setTimeout(() => setBadgeCopied(false), 2000)
-    } catch (error) {
-      console.error('Failed to copy badge:', error)
-    }
-  }
+  // Build preview stat columns from real data
+  const previewStats: { label: string; value: string }[] = []
+  if (rank) previewStats.push({ label: 'RANK', value: `# ${rank}` })
+  if (streak && streak > 0) previewStats.push({ label: 'STREAK', value: `🔥 ${streak}d` })
+  if (league) previewStats.push({ label: 'LEAGUE', value: league })
+  if (score) previewStats.push({ label: 'SCORE', value: `${score.toLocaleString()} pts` })
 
   return (
     <div className="mb-8 space-y-4">
+      {/* README Card */}
       {isPublicState && (
         <Card>
           <CardHeader>
-            <CardTitle>Embed Badge</CardTitle>
+            <CardTitle className="text-sm">
+              <InfoTooltip
+                label="README Card"
+                explanation="A live SVG card you can embed in your GitHub profile README. Updates automatically whenever your stats sync."
+              />
+            </CardTitle>
+            <CardDescription>Add a live card to your GitHub profile</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {badgeUrl && (
-              <div className="flex items-center gap-4">
-                <Image 
-                  src={badgeUrl} 
-                  alt="DevArena Badge" 
-                  className="border rounded-md"
-                  width={200}
-                  height={60}
-                />
-                <div className="flex-1">
-                  <div className="bg-muted p-3 font-mono text-xs break-all rounded-md">
-                    {badgeMarkdown}
-                  </div>
+          <CardContent>
+            {/* Static mockup of the SVG card */}
+            <div className="rounded-md border bg-white p-4 max-w-sm">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-5 h-5 bg-[#0d0d0d] rounded flex items-center justify-center shrink-0">
+                  <span className="font-mono text-[8px] font-bold text-white leading-none" style={{ letterSpacing: '-1px' }}>~/</span>
                 </div>
+                <span className="font-mono text-xs font-semibold text-[#0d0d0d]">DevArena</span>
               </div>
-            )}
-            <Button variant="outline" onClick={handleCopyBadge}>
-              {badgeCopied ? 'Copied!' : 'Copy badge code'}
-            </Button>
+              <p className="font-mono text-xs text-[#999] mb-3">@{username}</p>
+              {previewStats.length > 0 ? (
+                <div className="flex items-center gap-4">
+                  {previewStats.slice(0, 4).map((s) => (
+                    <div key={s.label} className="text-center flex-1">
+                      <div className="text-[9px] text-[#999] tracking-wider mb-0.5">{s.label}</div>
+                      <div className="font-mono text-xs font-bold text-[#0d0d0d]">{s.value}</div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center">
+                  <span className="font-mono text-[10px] text-[#999]">No stats available</span>
+                </div>
+              )}
+            </div>
           </CardContent>
+          <CardFooter>
+            <Button variant="outline" className="w-full" asChild>
+              <Link href="/dashboard/readme">Configure your card →</Link>
+            </Button>
+          </CardFooter>
         </Card>
       )}
 
-      <div className="flex gap-4 flex-wrap">
-        <Button variant="outline" onClick={handleShare}>
-          {copied ? 'Copied!' : 'Share your card'}
-        </Button>
-        <Button variant="outline" onClick={handleTogglePublic} disabled={isToggling}>
-          Profile is {isPublicState ? 'public' : 'private'}
-        </Button>
-        <Button variant="outline" onClick={handleSync} disabled={isSyncing}>
-          {isSyncing ? 'Syncing...' : 'Sync now'}
-        </Button>
+      {/* Quick Actions */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {/* Share */}
+        <button
+          onClick={handleShare}
+          className="group rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted/50 active:bg-muted"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted text-lg">
+              {copied ? '✓' : '🔗'}
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-medium leading-tight">
+                {copied ? 'Link copied!' : 'Share profile'}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                devarena.so/u/{username}
+              </p>
+            </div>
+          </div>
+        </button>
+
+        {/* Visibility */}
+        <button
+          onClick={handleTogglePublic}
+          disabled={isToggling}
+          className="group rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted/50 active:bg-muted disabled:opacity-50"
+        >
+          <div className="flex items-center gap-3">
+            <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-lg ${
+              isPublicState ? 'bg-green-100 text-green-700' : 'bg-muted'
+            }`}>
+              {isPublicState ? '🌐' : '🔒'}
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-medium leading-tight">
+                {isPublicState ? 'Public profile' : 'Private profile'}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Tap to {isPublicState ? 'hide' : 'show'} on leaderboard
+              </p>
+            </div>
+          </div>
+        </button>
+
+        {/* Sync */}
+        <button
+          onClick={handleSync}
+          disabled={isSyncing}
+          className="group rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted/50 active:bg-muted disabled:opacity-50"
+        >
+          <div className="flex items-center gap-3">
+            <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted text-lg ${
+              isSyncing ? 'animate-spin' : ''
+            }`}>
+              {isSyncing ? '⟳' : '🔄'}
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-medium leading-tight">
+                {isSyncing ? 'Syncing…' : 'Sync now'}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Pull latest from GitHub
+              </p>
+            </div>
+          </div>
+        </button>
       </div>
+
+      {/* Danger Zone */}
+      <Separator className="my-2" />
+      <Card className="border-red-200">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm text-red-600">Danger Zone</CardTitle>
+          <CardDescription>
+            Permanently delete your account and all associated data.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!showDeleteConfirm ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+              onClick={() => setShowDeleteConfirm(true)}
+            >
+              Delete my account
+            </Button>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-sm text-red-600">
+                This will permanently delete your profile, stats, league memberships, and feed events.
+                This action cannot be undone.
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  disabled={isDeleting}
+                  onClick={async () => {
+                    setIsDeleting(true)
+                    try {
+                      const response = await fetch('/api/user/delete', {
+                        method: 'DELETE',
+                      })
+                      if (response.ok) {
+                        router.push('/')
+                        router.refresh()
+                      } else {
+                        alert('Failed to delete account. Please try again.')
+                      }
+                    } catch {
+                      alert('Failed to delete account. Please try again.')
+                    } finally {
+                      setIsDeleting(false)
+                    }
+                  }}
+                >
+                  {isDeleting ? 'Deleting…' : 'Yes, delete everything'}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowDeleteConfirm(false)}
+                  disabled={isDeleting}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }

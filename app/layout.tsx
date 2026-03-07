@@ -1,8 +1,11 @@
 import type { Metadata } from 'next'
-import { Inter, JetBrains_Mono } from 'next/font/google'
+import { Inter, IBM_Plex_Mono } from 'next/font/google'
 import './globals.css'
 import Navbar from './components/Navbar'
+import Footer from './components/Footer'
 import { SessionProvider } from './components/SessionProvider'
+import { Analytics } from '@vercel/analytics/react'
+import { SpeedInsights } from '@vercel/speed-insights/next'
 
 const geistSans = Inter({
   subsets: ['latin'],
@@ -10,15 +13,30 @@ const geistSans = Inter({
   display: 'swap',
 })
 
-const geistMono = JetBrains_Mono({
+const ibmPlexMono = IBM_Plex_Mono({
   subsets: ['latin'],
-  variable: '--font-geist-mono',
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-ibm-plex-mono',
   display: 'swap',
 })
 
 export const metadata: Metadata = {
-  title: 'DevArena - Verified Coding Leaderboard',
-  description: 'A verified coding leaderboard that shows who\'s building the hardest in real time.',
+  title: "DevArena — Who's Building?",
+  description:
+    "A verified leaderboard of the world's hardest working developers.",
+  openGraph: {
+    title: "DevArena — Who's Building?",
+    description:
+      "A verified leaderboard of the world's hardest working developers.",
+    siteName: 'DevArena',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: "DevArena — Who's Building?",
+    description:
+      "A verified leaderboard of the world's hardest working developers.",
+  },
 }
 
 export default function RootLayout({
@@ -28,11 +46,18 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}>
+      <body
+        className={`${geistSans.variable} ${ibmPlexMono.variable} font-sans antialiased`}
+      >
         <SessionProvider>
           <Navbar />
-          {children}
+          <main className="min-h-[calc(100vh-8rem)]">
+            {children}
+          </main>
+          <Footer />
         </SessionProvider>
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   )

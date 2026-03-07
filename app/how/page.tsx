@@ -1,155 +1,147 @@
-'use client'
-
-import { signIn } from 'next-auth/react'
 import Link from 'next/link'
+import Logo from '@/components/logo'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
+import LeagueBadge from '@/components/league-badge'
+import InfoTooltip from '@/components/info-tooltip'
+import type { LeagueTier } from '@/components/league-badge'
+
+const leagueTiers: LeagueTier[] = ['bronze', 'silver', 'gold', 'platinum', 'diamond']
 
 export default function HowPage() {
   return (
-    <div className="min-h-screen bg-background p-8">
-      <div className="max-w-4xl mx-auto">
-        <header className="mb-12 text-center">
-          <h1 className="text-6xl sm:text-7xl font-heading font-black text-black mb-4">
-            HOW IT WORKS
-          </h1>
-          <p className="text-xl font-sans font-bold text-black">
-            Join the leaderboard in seconds. No setup required.
+    <div className="min-h-screen bg-background">
+      <div className="max-w-2xl mx-auto px-6 py-16">
+        {/* Header */}
+        <header className="mb-12">
+          <Link href="/" className="inline-block mb-8">
+            <Logo size="md" />
+          </Link>
+          <h1 className="text-3xl font-bold mb-2">How DevArena works</h1>
+          <p className="text-muted-foreground">
+            Verified builds. Real scores. No vanity metrics.
           </p>
         </header>
 
-        <div className="space-y-6 mb-12">
-          {/* Step 1: Get Started */}
-          <div className="border-2 border-black bg-yellow p-8 shadow-neobrutalism">
-            <div className="flex items-start gap-4 mb-4">
-              <div className="border-2 border-black bg-black text-white w-12 h-12 flex items-center justify-center font-heading font-black text-2xl flex-shrink-0">
-                1
-              </div>
-              <div className="flex-1">
-                <h2 className="text-3xl font-heading font-black text-black mb-3">
-                  SIGN IN WITH GITHUB
-                </h2>
-                <p className="text-black leading-relaxed mb-4 font-sans font-bold text-lg">
-                  Click the button below to instantly join the leaderboard. Your commit activity, 
-                  contribution streak, and top language are pulled directly from your GitHub profile. 
-                  No configuration needed.
-                </p>
-                <button
-                  onClick={() => signIn('github')}
-                  className="border-2 border-black bg-black text-white px-8 py-4 font-sans font-bold text-lg shadow-neobrutalism hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-neobrutalism-sm transition-all"
-                >
-                  SIGN IN WITH GITHUB →
-                </button>
-              </div>
-            </div>
-          </div>
+        {/* Step cards */}
+        <div className="space-y-4">
+          {/* Step 1 — Connect GitHub */}
+          <Card>
+            <CardHeader>
+              <p className="font-mono text-sm text-muted-foreground">01</p>
+              <CardTitle>Connect your GitHub</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Sign in with GitHub in one click. We pull your commits,
+                pull requests, and contribution streak directly from the
+                GitHub API. No manual input, no self-reporting.
+              </p>
+              <Badge variant="secondary">Takes 30 seconds</Badge>
+            </CardContent>
+          </Card>
 
-          {/* Step 2: Verification */}
-          <div className="border-2 border-black bg-blue p-8 shadow-neobrutalism">
-            <div className="flex items-start gap-4 mb-4">
-              <div className="border-2 border-black bg-white text-black w-12 h-12 flex items-center justify-center font-heading font-black text-2xl flex-shrink-0">
-                2
+          {/* Step 2 — Builder Score */}
+          <Card>
+            <CardHeader>
+              <p className="font-mono text-sm text-muted-foreground">02</p>
+              <CardTitle>Your builder score is calculated</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                We combine commits, PRs merged, active days, and consistency
+                into a single score. Updated every hour. A 14-day streak beats
+                a one-day commit dump every time.
+              </p>
+              <div className="bg-muted rounded-md px-4 py-3 text-sm font-mono overflow-x-auto">
+                <span>score = (</span>
+                <InfoTooltip label="commits" explanation="Only counts commits with 5+ lines changed." />
+                <span> × 1) + (</span>
+                <InfoTooltip label="PRs" explanation="Pull requests merged into any repository." />
+                <span> × 4) + (</span>
+                <InfoTooltip label="active days" explanation="Days with at least one qualifying commit." />
+                <span> × 3) + (</span>
+                <InfoTooltip label="repos" explanation="Distinct repositories contributed to." />
+                <span> × 5)</span>
               </div>
-              <div className="flex-1">
-                <h2 className="text-3xl font-heading font-black text-white mb-3">
-                  AUTOMATIC VERIFICATION
-                </h2>
-                <p className="text-white leading-relaxed font-sans font-bold text-lg mb-4">
-                  Your GitHub stats are pulled directly from the GitHub GraphQL API. We never self-report. 
-                  Stats are synced every 60 minutes automatically.
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
-                  <div className="border-2 border-white bg-white/20 p-4">
-                    <div className="text-white font-heading font-black text-2xl mb-1">COMMITS</div>
-                    <div className="text-white font-sans font-bold text-sm">Total commits this year</div>
-                  </div>
-                  <div className="border-2 border-white bg-white/20 p-4">
-                    <div className="text-white font-heading font-black text-2xl mb-1">STREAK</div>
-                    <div className="text-white font-sans font-bold text-sm">Contribution streak days</div>
-                  </div>
-                  <div className="border-2 border-white bg-white/20 p-4">
-                    <div className="text-white font-heading font-black text-2xl mb-1">LANGUAGE</div>
-                    <div className="text-white font-sans font-bold text-sm">Most used language</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
+          {/* Step 3 — Leagues */}
+          <Card>
+            <CardHeader>
+              <p className="font-mono text-sm text-muted-foreground">03</p>
+              <CardTitle>Compete in seasonal leagues</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Every month is a new season. Based on your score you are placed
+                into Bronze, Silver, Gold, Platinum, or Diamond. Get promoted by
+                outbuilding your division. Get relegated by going quiet. Seasons
+                reset on the 1st of every month.
+              </p>
+              <div className="flex items-center gap-2 flex-wrap">
+                {leagueTiers.map((tier) => (
+                  <LeagueBadge key={tier} tier={tier} />
+                ))}
+              </div>
+            </CardContent>
+          </Card>
 
-          {/* Privacy */}
-          <div className="border-2 border-black bg-white p-8 shadow-neobrutalism">
-            <div className="flex items-start gap-4">
-              <div className="border-2 border-black bg-black text-white w-12 h-12 flex items-center justify-center font-heading font-black text-2xl flex-shrink-0">
-                🔒
-              </div>
-              <div className="flex-1">
-                <h2 className="text-3xl font-heading font-black text-black mb-3">
-                  PRIVACY & CONTROL
-                </h2>
-                <p className="text-black leading-relaxed font-sans font-bold text-lg mb-4">
-                  You control your visibility. Toggle your profile between public and private 
-                  in your dashboard. Private profiles don&apos;t appear on the leaderboard.
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
-                  <div className="border-2 border-black bg-light-blue p-4">
-                    <div className="text-black font-heading font-black text-xl mb-2">PUBLIC</div>
-                    <div className="text-black font-sans font-bold text-sm">
-                      Visible on leaderboard, shareable profile
-                    </div>
-                  </div>
-                  <div className="border-2 border-black bg-white p-4">
-                    <div className="text-black font-heading font-black text-xl mb-2">PRIVATE</div>
-                    <div className="text-black font-sans font-bold text-sm">
-                      Hidden from leaderboard, stats still tracked
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          {/* Step 4 — Cracked */}
+          <Card>
+            <CardHeader>
+              <p className="font-mono text-sm text-muted-foreground">04</p>
+              <CardTitle>Get cracked in your language</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                The #1 ranked developer for each programming language earns a 👑
+                crown on their profile. Rankings update hourly. The spot can be
+                taken — stay active or lose your crown.
+              </p>
+              <Button variant="ghost" size="sm" className="px-0 text-sm" asChild>
+                <Link href="/cracked">View the cracked devs →</Link>
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Step 5 — README Card */}
+          <Card>
+            <CardHeader>
+              <p className="font-mono text-sm text-muted-foreground">05</p>
+              <CardTitle>Show the world you&apos;re building</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Add a live card to your GitHub profile README. Displays your
+                rank, streak, league, and cracked status. Updates
+                automatically. Configurable from your dashboard.
+              </p>
+              <pre className="bg-muted rounded-md px-4 py-3 text-xs font-mono overflow-x-auto">
+                <code>{'[![DevArena](https://devarena.so/readme/username?stats=rank,streak,league)](https://devarena.so)'}</code>
+              </pre>
+              <Button variant="ghost" size="sm" className="px-0 text-sm" asChild>
+                <Link href="/dashboard/readme">Configure your card →</Link>
+              </Button>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* FAQ Section */}
-        <div className="border-2 border-black bg-white p-8 shadow-neobrutalism">
-          <h2 className="text-3xl font-heading font-black text-black mb-6">
-            FREQUENTLY ASKED QUESTIONS
-          </h2>
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-xl font-heading font-black text-black mb-2">
-                How often are stats updated?
-              </h3>
-              <p className="text-black font-sans font-bold">
-                GitHub stats sync every 60 minutes automatically.
-              </p>
-            </div>
-            <div>
-              <h3 className="text-xl font-heading font-black text-black mb-2">
-                What data do you access?
-              </h3>
-              <p className="text-black font-sans font-bold">
-                We only access your public GitHub contribution data (commits, languages, streak). 
-                We never access private repositories or personal information.
-              </p>
-            </div>
-            <div>
-              <h3 className="text-xl font-heading font-black text-black mb-2">
-                Can I disconnect my account?
-              </h3>
-              <p className="text-black font-sans font-bold">
-                Yes! You can make your profile private at any time from your dashboard.
-              </p>
-            </div>
+        {/* Bottom CTA */}
+        <div className="mt-12">
+          <Separator className="mb-8" />
+          <div className="text-center space-y-4">
+            <p className="text-lg font-medium">Ready to see where you rank?</p>
+            <Button asChild>
+              <Link href="/">View the leaderboard →</Link>
+            </Button>
+            <p className="text-sm text-muted-foreground">
+              Free forever. No credit card required.
+            </p>
           </div>
-        </div>
-
-        {/* CTA */}
-        <div className="mt-12 text-center">
-          <Link
-            href="/"
-            className="inline-block border-2 border-black bg-yellow text-black px-8 py-4 font-sans font-bold text-lg shadow-neobrutalism hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-neobrutalism-sm transition-all"
-          >
-            VIEW LEADERBOARD →
-          </Link>
         </div>
       </div>
     </div>

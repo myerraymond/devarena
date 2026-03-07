@@ -58,7 +58,7 @@ const config: Config = {
       },
       fontFamily: {
         sans: ['var(--font-geist-sans)', 'sans-serif'],
-        mono: ['var(--font-geist-mono)', 'monospace'],
+        mono: ['var(--font-ibm-plex-mono)', 'var(--font-geist-mono)', 'monospace'],
       },
     },
   },

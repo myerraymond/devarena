@@ -6,6 +6,10 @@ import BlinkingCursor from './components/BlinkingCursor'
 import ConnectCTA from './components/ConnectCTA'
 import LeaderboardClient from './components/LeaderboardClient'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
+import { getKingsMap } from '@/lib/language-kings'
+import { getLeagueTiersMap } from '@/lib/leagues'
+import { getFeedEvents } from '@/lib/feed'
+import LiveFeedSidebar from '@/components/live-feed-sidebar'
 
 export const revalidate = 60
 
@@ -31,6 +35,7 @@ export interface LeaderboardData {
   stars: number | null
   publicRepos: number | null
   is_active: boolean
+  score?: number // Computed timeframe-specific score (set during sorting)
 }
 
 interface UserData {
@@ -239,102 +244,120 @@ interface HomeProps {
 
 export default async function Home({ searchParams }: HomeProps) {
   const timeframe = (searchParams.timeframe as Timeframe) || 'week'
-  const { data: initialLeaderboardData, isCached } = await getInitialLeaderboardData(timeframe)
-  const userCounts = await getUserCounts()
+  const [{ data: initialLeaderboardData, isCached }, userCounts, kingsMapRaw, leagueTiers, { events: feedEvents }] = await Promise.all([
+    getInitialLeaderboardData(timeframe),
+    getUserCounts(),
+    getKingsMap(),
+    getLeagueTiersMap(),
+    getFeedEvents(20, 0),
+  ])
+
+  // Convert Map to plain object for serialization to client component
+  const kingsRecord: Record<string, string[]> = Object.fromEntries(kingsMapRaw)
 
   return (
     <main className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto px-6 py-12">
-        <header className="mb-8">
-          <div className="flex items-start justify-between mb-2">
-            <div>
-              <h1 className="text-2xl font-bold mb-1">
-                Leaderboard
-              </h1>
-              <div className="flex items-center gap-3 text-xs text-foreground/60">
-                <HoverCard>
-                  <HoverCardTrigger asChild>
-                    <button className="hover:text-foreground transition-colors">
-                      <span className="font-mono font-semibold text-foreground">{userCounts.week}</span> weekly
-                    </button>
-                  </HoverCardTrigger>
-                  <HoverCardContent>
-                    <div className="space-y-2">
-                      <h4 className="text-sm font-semibold">Weekly Active Users</h4>
-                      <p className="text-sm text-foreground/80">
-                        {userCounts.week} builders with activity this week.
-                      </p>
-                    </div>
-                  </HoverCardContent>
-                </HoverCard>
-                <span>•</span>
-                <HoverCard>
-                  <HoverCardTrigger asChild>
-                    <button className="hover:text-foreground transition-colors">
-                      <span className="font-mono font-semibold text-foreground">{userCounts.month}</span> monthly
-                    </button>
-                  </HoverCardTrigger>
-                  <HoverCardContent>
-                    <div className="space-y-2">
-                      <h4 className="text-sm font-semibold">Monthly Active Users</h4>
-                      <p className="text-sm text-foreground/80">
-                        {userCounts.month} builders with activity this month.
-                      </p>
-                    </div>
-                  </HoverCardContent>
-                </HoverCard>
-                <span>•</span>
-                <HoverCard>
-                  <HoverCardTrigger asChild>
-                    <button className="hover:text-foreground transition-colors">
-                      <span className="font-mono font-semibold text-foreground">{userCounts.allTime}</span> total
-                    </button>
-                  </HoverCardTrigger>
-                  <HoverCardContent>
-                    <div className="space-y-2">
-                      <h4 className="text-sm font-semibold">All-Time Users</h4>
-                      <p className="text-sm text-foreground/80">
-                        {userCounts.allTime} total builders who have ever contributed.
-                      </p>
-                    </div>
-                  </HoverCardContent>
-                </HoverCard>
-              </div>
-            </div>
-          </div>
-          <p className="text-sm text-foreground/80">
-            Ranked by{' '}
-            <HoverCard>
-              <HoverCardTrigger asChild>
-                <button className="underline underline-offset-2 hover:text-foreground transition-colors">
-                  builder score
-                </button>
-              </HoverCardTrigger>
-              <HoverCardContent>
-                <div className="space-y-2">
-                  <h4 className="text-sm font-semibold">Builder Score</h4>
-                  <p className="text-sm text-foreground/80">
-                    A weighted metric calculated from your GitHub activity:
-                  </p>
-                  <ul className="text-xs text-foreground/80 space-y-1 list-disc list-inside">
-                    <li>Commits × 1</li>
-                    <li>PRs opened × 2</li>
-                    <li>PRs merged × 4</li>
-                    <li>Active days × 3</li>
-                    <li>Repos contributed to × 5</li>
-                  </ul>
+        <div className="flex gap-8">
+          {/* Main leaderboard content */}
+          <div className="flex-1 min-w-0">
+            <header className="mb-8">
+              <div className="flex items-start justify-between mb-2">
+                <div>
+                  <h1 className="text-2xl font-bold mb-1">
+                    Leaderboard
+                  </h1>
+                  <div className="flex items-center gap-3 text-xs text-foreground/60">
+                    <HoverCard>
+                      <HoverCardTrigger asChild>
+                        <button className="hover:text-foreground transition-colors">
+                          <span className="font-mono font-semibold text-foreground">{userCounts.week}</span> weekly
+                        </button>
+                      </HoverCardTrigger>
+                      <HoverCardContent>
+                        <div className="space-y-2">
+                          <h4 className="text-sm font-semibold">Weekly Active Users</h4>
+                          <p className="text-sm text-foreground/80">
+                            {userCounts.week} builders with activity this week.
+                          </p>
+                        </div>
+                      </HoverCardContent>
+                    </HoverCard>
+                    <span>•</span>
+                    <HoverCard>
+                      <HoverCardTrigger asChild>
+                        <button className="hover:text-foreground transition-colors">
+                          <span className="font-mono font-semibold text-foreground">{userCounts.month}</span> monthly
+                        </button>
+                      </HoverCardTrigger>
+                      <HoverCardContent>
+                        <div className="space-y-2">
+                          <h4 className="text-sm font-semibold">Monthly Active Users</h4>
+                          <p className="text-sm text-foreground/80">
+                            {userCounts.month} builders with activity this month.
+                          </p>
+                        </div>
+                      </HoverCardContent>
+                    </HoverCard>
+                    <span>•</span>
+                    <HoverCard>
+                      <HoverCardTrigger asChild>
+                        <button className="hover:text-foreground transition-colors">
+                          <span className="font-mono font-semibold text-foreground">{userCounts.allTime}</span> total
+                        </button>
+                      </HoverCardTrigger>
+                      <HoverCardContent>
+                        <div className="space-y-2">
+                          <h4 className="text-sm font-semibold">All-Time Users</h4>
+                          <p className="text-sm text-foreground/80">
+                            {userCounts.allTime} total builders who have ever contributed.
+                          </p>
+                        </div>
+                      </HoverCardContent>
+                    </HoverCard>
+                  </div>
                 </div>
-              </HoverCardContent>
-            </HoverCard>
-            . Updated hourly.
-          </p>
-        </header>
+              </div>
+              <p className="text-sm text-foreground/80">
+                Ranked by{' '}
+                <HoverCard>
+                  <HoverCardTrigger asChild>
+                    <button className="underline underline-offset-2 hover:text-foreground transition-colors">
+                      builder score
+                    </button>
+                  </HoverCardTrigger>
+                  <HoverCardContent>
+                    <div className="space-y-2">
+                      <h4 className="text-sm font-semibold">Builder Score</h4>
+                      <p className="text-sm text-foreground/80">
+                        A weighted metric calculated from your GitHub activity:
+                      </p>
+                      <ul className="text-xs text-foreground/80 space-y-1 list-disc list-inside">
+                        <li>Commits × 1</li>
+                        <li>PRs opened × 2</li>
+                        <li>PRs merged × 4</li>
+                        <li>Active days × 3</li>
+                        <li>Repos contributed to × 5</li>
+                      </ul>
+                    </div>
+                  </HoverCardContent>
+                </HoverCard>
+                . Updated hourly.
+              </p>
+            </header>
 
-        <LeaderboardClient 
-          data={initialLeaderboardData} 
-          timeframe={timeframe}
-          isCached={isCached}
-        />
+            <LeaderboardClient 
+              data={initialLeaderboardData} 
+              timeframe={timeframe}
+              isCached={isCached}
+              languageKings={kingsRecord}
+              leagueTiers={leagueTiers}
+            />
+          </div>
+
+          {/* Live Feed sidebar — desktop only */}
+          <LiveFeedSidebar initialEvents={feedEvents} />
+        </div>
       </div>
 
       <ConnectCTA />

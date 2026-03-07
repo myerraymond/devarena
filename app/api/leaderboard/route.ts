@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { createServerClient } from '@/lib/supabase'
 import { isActive } from '@/lib/utils'
+import { leaderboardQuerySchema } from '@/lib/validation'
 
 export const revalidate = 60
 
@@ -57,17 +58,33 @@ export interface LeaderboardData {
   stars: number | null
   publicRepos: number | null
   is_active: boolean
+  score?: number
 }
 
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
-    const timeframe = (searchParams.get('timeframe') as Timeframe) || 'week'
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '50')
+    
+    // Validate query params with zod
+    const parsed = leaderboardQuerySchema.safeParse({
+      timeframe: searchParams.get('timeframe') || undefined,
+      page: searchParams.get('page') || undefined,
+      limit: searchParams.get('limit') || undefined,
+      username: searchParams.get('username') || undefined,
+    })
+
+    const params = parsed.success
+      ? parsed.data
+      : { timeframe: 'week' as const, page: 1, limit: 50, username: undefined }
+
+    const timeframe = params.timeframe as Timeframe
+    const page = params.page
+    const limit = params.limit
     const offset = (page - 1) * limit
 
-    // Get the latest snapshot for each user
+    // Use server client (service role) for read — RLS allows public SELECT
+    const supabase = createServerClient()
+
     const { data: latestSnapshots, error } = await supabase
       .from('stats_snapshots')
       .select('*, users!inner (username, github_username, display_name, is_public)')
@@ -75,7 +92,6 @@ export async function GET(request: NextRequest) {
       .order('snapshotted_at', { ascending: false })
 
     if (error) {
-      console.error('Error fetching leaderboard:', error)
       return NextResponse.json({ error: 'Failed to fetch leaderboard' }, { status: 500 })
     }
 
@@ -83,54 +99,51 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ data: [], hasMore: false, page, total: 0 })
     }
 
-    // Group by user_id and get the latest snapshot for each user
+    // Group by user_id and get the latest snapshot
     const userMap = new Map<string, SnapshotWithUser>()
-    
+
     for (const snapshot of latestSnapshots) {
-      if (!snapshot || typeof snapshot !== 'object' || !('user_id' in snapshot)) {
-        continue
-      }
+      if (!snapshot || typeof snapshot !== 'object' || !('user_id' in snapshot)) continue
       const typedSnapshot = snapshot as unknown as SnapshotWithUser
       const userId = typedSnapshot.user_id
-      if (!userId || !typedSnapshot.snapshotted_at) {
-        continue
-      }
-      if (!userMap.has(userId) || 
-          new Date(typedSnapshot.snapshotted_at) > new Date(userMap.get(userId)!.snapshotted_at)) {
+      if (!userId || !typedSnapshot.snapshotted_at) continue
+      if (
+        !userMap.has(userId) ||
+        new Date(typedSnapshot.snapshotted_at) > new Date(userMap.get(userId)!.snapshotted_at)
+      ) {
         userMap.set(userId, typedSnapshot)
       }
     }
 
-    // Convert to leaderboard format
     const leaderboard: LeaderboardData[] = Array.from(userMap.values())
-      .map((snapshot) => {
-        return {
-          rank: 0, // Will be set after sorting
-          username: (snapshot.users as any).github_username || snapshot.users.username || 'unknown',
-          display_name: snapshot.users.display_name,
-          weekHours: snapshot.week_total_seconds || 0,
-          monthHours: snapshot.month_total_seconds || 0,
-          allTimeHours: snapshot.all_time_seconds || 0,
-          weekScore: snapshot.week_score ?? 0,
-          monthScore: snapshot.month_score ?? 0,
-          weekCommits: snapshot.week_commits || null,
-          monthCommits: snapshot.month_commits || null,
-          yearCommits: snapshot.year_commits || null,
-          allTimeCommits: snapshot.all_time_commits || snapshot.github_commits || null,
-          commits: snapshot.week_commits || snapshot.github_commits || null,
-          streak: snapshot.streak_days || snapshot.github_streak_days || null,
-          top_language: snapshot.top_language || snapshot.github_top_language || null,
-          followers: snapshot.github_followers || null,
-          stars: snapshot.github_stars || null,
-          publicRepos: snapshot.github_public_repos || null,
-          is_active: isActive(snapshot.snapshotted_at),
-        }
-      })
-      .filter((entry) => entry.commits !== null || entry.weekScore > 0 || entry.monthScore > 0)
+      .map((snapshot) => ({
+        rank: 0,
+        username:
+          (snapshot.users as any).github_username || snapshot.users.username || 'unknown',
+        display_name: snapshot.users.display_name,
+        weekHours: snapshot.week_total_seconds || 0,
+        monthHours: snapshot.month_total_seconds || 0,
+        allTimeHours: snapshot.all_time_seconds || 0,
+        weekScore: snapshot.week_score ?? 0,
+        monthScore: snapshot.month_score ?? 0,
+        weekCommits: snapshot.week_commits || null,
+        monthCommits: snapshot.month_commits || null,
+        yearCommits: snapshot.year_commits || null,
+        allTimeCommits: snapshot.all_time_commits || snapshot.github_commits || null,
+        commits: snapshot.week_commits || snapshot.github_commits || null,
+        streak: snapshot.streak_days || snapshot.github_streak_days || null,
+        top_language: snapshot.top_language || snapshot.github_top_language || null,
+        followers: snapshot.github_followers || null,
+        stars: snapshot.github_stars || null,
+        publicRepos: snapshot.github_public_repos || null,
+        is_active: isActive(snapshot.snapshotted_at),
+      }))
+      .filter(
+        (entry) => entry.commits !== null || (entry.weekScore ?? 0) > 0 || (entry.monthScore ?? 0) > 0
+      )
 
-    // Sort by timeframe-specific score
     const sorted = leaderboard
-      .map(entry => {
+      .map((entry) => {
         let score = 0
         let commits = 0
         switch (timeframe) {
@@ -150,9 +163,7 @@ export async function GET(request: NextRequest) {
         return { ...entry, score, commits }
       })
       .sort((a, b) => {
-        if (a.score === b.score) {
-          return b.commits - a.commits
-        }
+        if (a.score === b.score) return b.commits - a.commits
         return b.score - a.score
       })
       .map((entry, index) => ({
@@ -160,7 +171,12 @@ export async function GET(request: NextRequest) {
         rank: index + 1,
       }))
 
-    // Paginate
+    // Find specific user
+    let userEntry: LeaderboardData | null = null
+    if (params.username) {
+      userEntry = sorted.find((entry) => entry.username === params.username) || null
+    }
+
     const paginated = sorted.slice(offset, offset + limit)
     const hasMore = offset + limit < sorted.length
 
@@ -169,9 +185,9 @@ export async function GET(request: NextRequest) {
       hasMore,
       page,
       total: sorted.length,
+      userEntry,
     })
-  } catch (error) {
-    console.error('Error fetching paginated leaderboard:', error)
+  } catch {
     return NextResponse.json({ error: 'Failed to fetch leaderboard' }, { status: 500 })
   }
 }

@@ -48,7 +48,6 @@ export async function GET(
     return new Response('User not found', { status: 404 })
   }
 
-  // Use GitHub commits instead of WakaTime hours
   const weekCommits = stats.week_commits || 0
   const yearCommits = stats.year_commits || 0
   const allTimeCommits = stats.all_time_commits || stats.github_commits || 0
@@ -67,7 +66,7 @@ export async function GET(
   const timeframeLabel = weekCommits > 0 ? 'THIS WEEK' : yearCommits > 0 ? 'THIS YEAR' : 'ALL TIME'
   const usernameLabel = `@${displayUsername} // ${timeframeLabel}`
 
-  return new ImageResponse(
+  const response = new ImageResponse(
     (
       <div
         style={{
@@ -84,20 +83,53 @@ export async function GET(
         }}
       >
 
-        {/* Top left: DEVARENA */}
+        {/* Top left: DevArena logo */}
         <div
           style={{
             position: 'absolute',
             top: 50,
             left: 50,
-            fontSize: 32,
-            color: '#000',
-            fontFamily: 'Archivo, sans-serif',
-            fontWeight: '900',
-            letterSpacing: '2px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 11,
           }}
         >
-          DEVARENA
+          <div
+            style={{
+              width: 48,
+              height: 48,
+              background: '#0d0d0d',
+              borderRadius: 11,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >
+            <span
+              style={{
+                fontFamily: 'monospace',
+                fontSize: 21,
+                fontWeight: 700,
+                color: '#ffffff',
+                letterSpacing: '-1.5px',
+                lineHeight: 1,
+              }}
+            >
+              ~/
+            </span>
+          </div>
+          <span
+            style={{
+              fontFamily: 'monospace',
+              fontSize: 24,
+              fontWeight: 600,
+              letterSpacing: '-0.3px',
+              color: '#0d0d0d',
+            }}
+          >
+            DevArena
+          </span>
         </div>
 
         {/* Center: Main hours number with phosphor glow */}
@@ -164,19 +196,31 @@ export async function GET(
             >
               STREAK
             </div>
-            <div
-              style={{
-                fontSize: 24,
-                color: '#000',
-                fontFamily: 'Archivo, sans-serif',
-                fontWeight: '900',
-                display: 'flex',
-              }}
-            >
-              {(stats.github_streak_days || stats.streak_days) && (stats.github_streak_days || stats.streak_days || 0) > 0 
-                ? `🔥 ${stats.github_streak_days || stats.streak_days || 0} days`
-                : '—'}
-            </div>
+            {(() => {
+              const streakDays = stats.github_streak_days || stats.streak_days || 0
+              const isLegendary = streakDays >= 100
+              return (
+                <div
+                  style={{
+                    fontSize: 24,
+                    fontFamily: 'Archivo, sans-serif',
+                    fontWeight: '900',
+                    display: 'flex',
+                    ...(isLegendary
+                      ? {
+                          background: 'linear-gradient(135deg, #d97706, #dc2626)',
+                          backgroundClip: 'text',
+                          color: 'transparent',
+                        }
+                      : { color: '#000' }),
+                  }}
+                >
+                  {streakDays > 0
+                    ? `${isLegendary ? '👑🔥' : '🔥'} ${streakDays} days`
+                    : '—'}
+                </div>
+              )
+            })()}
           </div>
 
           {/* Top Language */}
@@ -234,20 +278,53 @@ export async function GET(
           </div>
         </div>
 
-        {/* Bottom right: URL */}
+        {/* Bottom right: DevArena logo (light on dark is not needed here, but consistent) */}
         <div
           style={{
             position: 'absolute',
             bottom: 50,
             right: 50,
-            fontSize: 20,
-            color: '#000',
-            fontFamily: 'DM Sans, sans-serif',
-            fontWeight: '700',
-            letterSpacing: '1px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
           }}
         >
-          devarena.so
+          <div
+            style={{
+              width: 28,
+              height: 28,
+              background: '#0d0d0d',
+              borderRadius: 6,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >
+            <span
+              style={{
+                fontFamily: 'monospace',
+                fontSize: 12,
+                fontWeight: 700,
+                color: '#ffffff',
+                letterSpacing: '-1px',
+                lineHeight: 1,
+              }}
+            >
+              ~/
+            </span>
+          </div>
+          <span
+            style={{
+              fontFamily: 'monospace',
+              fontSize: 16,
+              fontWeight: 600,
+              letterSpacing: '-0.3px',
+              color: '#0d0d0d',
+            }}
+          >
+            devarena.so
+          </span>
         </div>
       </div>
     ),
@@ -256,4 +333,9 @@ export async function GET(
       height: 630,
     }
   )
+
+  // Cache OG images for 1 hour, allow stale-while-revalidate for 24h
+  response.headers.set('Cache-Control', 'public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400')
+
+  return response
 }

@@ -5,11 +5,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
-import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
+import InfoTooltip from '@/components/info-tooltip'
 import DashboardControls from '@/app/components/DashboardControls'
 import StatCard from '@/app/components/StatCard'
+import StreakBadge from '@/components/streak-badge'
+import LeagueBadge, { getTierLabel, getTierEmoji } from '@/components/league-badge'
+import type { LeagueTier } from '@/components/league-badge'
 import ContributionBarChart from '@/app/components/charts/ContributionBarChart'
 import LanguageDonutChart from '@/app/components/charts/LanguageDonutChart'
+import { getUserLeagueMembership, getUserPreviousLeagueMembership, getActiveSeason, getNextTierThreshold } from '@/lib/leagues'
 
 export const revalidate = 60
 
@@ -79,7 +83,7 @@ async function getUserDashboardData(userId: string) {
   
   const { data: user, error } = await serverClient
     .from('users')
-    .select('id, username, github_username, display_name, avatar_url, joined_at, is_public')
+    .select('id, username, github_username, display_name, avatar_url, joined_at, is_public, user_number')
     .eq('id', userId)
     .single()
 
@@ -104,31 +108,10 @@ async function getUserDashboardData(userId: string) {
       avatar_url: user.avatar_url,
       joined_at: user.joined_at,
       is_public: user.is_public,
+      user_number: (user as any).user_number ?? null,
     },
     stats: latestStats || null,
   }
-}
-
-async function getUserJoinOrder(userId: string): Promise<number | null> {
-  // Fetch all users ordered by joined_at and id to get accurate join order
-  const { data: allUsers, error } = await supabase
-    .from('users')
-    .select('id, joined_at')
-    .order('joined_at', { ascending: true })
-    .order('id', { ascending: true })
-
-  if (error || !allUsers) {
-    return null
-  }
-
-  // Find the index of the current user
-  const userIndex = allUsers.findIndex(u => u.id === userId)
-  
-  if (userIndex === -1) {
-    return null
-  }
-
-  return userIndex + 1
 }
 
 function getGreeting() {
@@ -145,9 +128,13 @@ export default async function DashboardPage() {
     redirect('/')
   }
 
-  const dashboardData = await getUserDashboardData(session.userId)
-  const ranks = await getUserRanks(session.userId)
-  const joinOrder = await getUserJoinOrder(session.userId)
+  const [dashboardData, ranks, leagueMembership, previousMembership, activeSeason] = await Promise.all([
+    getUserDashboardData(session.userId),
+    getUserRanks(session.userId),
+    getUserLeagueMembership(session.userId),
+    getUserPreviousLeagueMembership(session.userId),
+    getActiveSeason(),
+  ])
 
   if (!dashboardData) {
     return (
@@ -163,6 +150,13 @@ export default async function DashboardPage() {
 
   const { user, stats } = dashboardData
   const hasGitHub = stats && stats.github_commits !== null
+
+  // Fetch next tier threshold if user has a league membership
+  const nextTierInfo = leagueMembership
+    ? await getNextTierThreshold(leagueMembership.tier)
+    : null
+  const userScore = stats?.week_score || 0
+  const pointsToNext = nextTierInfo ? Math.max(0, nextTierInfo.minScore - userScore) : 0
 
   // Get daily breakdown for activity chart
   const dailyData = stats?.daily_breakdown && Array.isArray(stats.daily_breakdown) 
@@ -183,59 +177,150 @@ export default async function DashboardPage() {
           <h1 className="text-2xl font-bold">
             Welcome back, {user.display_name || user.username}
           </h1>
-          {joinOrder && (
+          {user.user_number && (
             <Badge variant="secondary" className="text-sm">
-              User #{joinOrder}
+              User #{user.user_number}
             </Badge>
           )}
         </div>
 
-        {/* Rank Card */}
-        {ranks.week && (
-          <Card className="mb-8">
+        {/* Score + Rank Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+          {/* Builder Score */}
+          <Card className="bg-primary/5 border-primary/20">
             <CardHeader>
-              <div className="flex items-center gap-2">
-                <CardTitle className="text-sm text-foreground/80">Your Rank This Week</CardTitle>
-                <HoverCard>
-                  <HoverCardTrigger asChild>
-                    <button className="text-muted-foreground hover:text-foreground">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </button>
-                  </HoverCardTrigger>
-                  <HoverCardContent>
-                    <div className="space-y-2">
-                      <h4 className="text-sm font-semibold">How Rankings Work</h4>
-                      <p className="text-sm text-muted-foreground">
-                        Your rank is calculated by comparing your builder score against all public profiles. Rankings update hourly as new GitHub activity is synced.
-                      </p>
-                    </div>
-                  </HoverCardContent>
-                </HoverCard>
-              </div>
+              <CardTitle className="text-sm text-foreground/80">
+                <InfoTooltip
+                  label="Builder Score This Week"
+                  explanation="Calculated as: (commits × 1) + (PRs × 4) + (active days × 3) + (repos × 5)."
+                />
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="font-mono text-3xl font-bold">#{ranks.week}</div>
-              {(ranks.month || ranks.allTime) && (
+              <div className="font-mono text-5xl font-bold">
+                {(stats?.week_score ?? 0).toLocaleString()}
+              </div>
+              {stats?.month_score != null && (
                 <>
                   <Separator className="my-4" />
-                  <div className="space-y-2 text-sm">
-                    {ranks.month && (
-                      <div>
-                        <span className="text-foreground/70">This Month: </span>
-                        <span className="font-mono font-semibold">#{ranks.month}</span>
-                      </div>
-                    )}
-                    {ranks.allTime && (
-                      <div>
-                        <span className="text-foreground/70">All Time: </span>
-                        <span className="font-mono font-semibold">#{ranks.allTime}</span>
-                      </div>
-                    )}
+                  <div className="space-y-1 text-sm">
+                    <div>
+                      <span className="text-foreground/70">This Month: </span>
+                      <span className="font-mono font-semibold">{stats.month_score.toLocaleString()}</span>
+                    </div>
                   </div>
                 </>
               )}
+            </CardContent>
+          </Card>
+
+          {/* Rank */}
+          {ranks.week && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm text-foreground/80">
+                  <InfoTooltip
+                    label="Your Rank This Week"
+                    explanation="Your current position on the global leaderboard, ranked by Builder Score. Updates every 6 hours."
+                  />
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="font-mono text-5xl font-bold">#{ranks.week}</div>
+                {(ranks.month || ranks.allTime) && (
+                  <>
+                    <Separator className="my-4" />
+                    <div className="space-y-1 text-sm">
+                      {ranks.month && (
+                        <div>
+                          <span className="text-foreground/70">This Month: </span>
+                          <span className="font-mono font-semibold">#{ranks.month}</span>
+                        </div>
+                      )}
+                      {ranks.allTime && (
+                        <div>
+                          <span className="text-foreground/70">All Time: </span>
+                          <span className="font-mono font-semibold">#{ranks.allTime}</span>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {/* League Tier */}
+        {leagueMembership && activeSeason && (
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle className="text-sm text-foreground/80">
+                <InfoTooltip
+                  label="Your League"
+                  explanation="Monthly seasons where builders compete for tier placement. Tiers are assigned based on your percentile rank at the end of each season."
+                />
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-4 mb-4">
+                <span className="text-4xl">{getTierEmoji(leagueMembership.tier)}</span>
+                <div>
+                  <div className="text-2xl font-bold">{getTierLabel(leagueMembership.tier)}</div>
+                  <LeagueBadge tier={leagueMembership.tier} className="mt-1" />
+                </div>
+              </div>
+
+              {/* Promotion / Relegation banner */}
+              {leagueMembership.promoted && (
+                <div className="mb-4 px-4 py-2 rounded-md bg-green-50 border border-green-200 text-green-700 text-sm">
+                  ↑ Promoted to {getTierLabel(leagueMembership.tier)} this season
+                </div>
+              )}
+              {leagueMembership.relegated && (
+                <div className="mb-4 px-4 py-2 rounded-md bg-muted border text-muted-foreground text-sm">
+                  ↓ Relegated from {previousMembership ? getTierLabel(previousMembership.tier) : 'higher tier'}
+                </div>
+              )}
+
+              {/* Progress bar to next tier */}
+              {nextTierInfo && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      <InfoTooltip
+                        label={`Progress to ${getTierEmoji(nextTierInfo.nextTier)} ${getTierLabel(nextTierInfo.nextTier)}`}
+                        explanation={`Points needed to reach the next tier before the season ends.`}
+                      />
+                    </span>
+                    <span className="font-mono text-xs">{userScore} / {nextTierInfo.minScore}</span>
+                  </div>
+                  <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-primary rounded-full transition-all"
+                      style={{ width: `${Math.min(100, nextTierInfo.minScore > 0 ? (userScore / nextTierInfo.minScore) * 100 : 0)}%` }}
+                    />
+                  </div>
+                  {pointsToNext > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      You need {pointsToNext.toLocaleString()} more points to reach {getTierEmoji(nextTierInfo.nextTier)} {getTierLabel(nextTierInfo.nextTier)}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Season countdown */}
+              {(() => {
+                const endsAt = new Date(activeSeason.ends_at)
+                const diffMs = endsAt.getTime() - Date.now()
+                const daysLeft = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)))
+                return (
+                  <Separator className="my-4" />
+                )
+              })()}
+              <p className="text-xs text-muted-foreground">
+                {activeSeason.name} · Ends in {Math.max(0, Math.ceil((new Date(activeSeason.ends_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))} days
+              </p>
             </CardContent>
           </Card>
         )}
@@ -243,16 +328,25 @@ export default async function DashboardPage() {
         <DashboardControls 
           username={user.github_username || user.username || 'unknown'}
           isPublic={user.is_public}
+          rank={ranks.week}
+          streak={stats?.streak_days || stats?.github_streak_days || null}
+          league={leagueMembership ? `${getTierEmoji(leagueMembership.tier)} ${getTierLabel(leagueMembership.tier)}` : null}
+          score={stats?.week_score || null}
         />
 
-        {/* Big Stat Card */}
+        {/* Total Commits Card */}
         {stats && (
-          <Card className="mb-8 bg-primary/5 border-primary/20">
+          <Card className="mb-8">
             <CardHeader>
-              <CardTitle className="text-sm text-foreground/80">Total Commits This Year</CardTitle>
+              <CardTitle className="text-sm text-foreground/80">
+                <InfoTooltip
+                  label="Total Commits This Year"
+                  explanation="Total GitHub commits since January 1st of the current year."
+                />
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="font-mono text-5xl font-bold">
+              <div className="font-mono text-3xl font-bold">
                 {stats.year_commits?.toLocaleString() || stats.all_time_commits?.toLocaleString() || '0'}
               </div>
             </CardContent>
@@ -303,12 +397,15 @@ export default async function DashboardPage() {
             {(stats.streak_days !== null || stats.github_streak_days !== null) && (
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-sm text-foreground/80">Streak</CardTitle>
+                  <CardTitle className="text-sm text-foreground/80">
+                    <InfoTooltip
+                      label="Streak"
+                      explanation="Consecutive days where you pushed at least one qualifying commit (5+ lines changed)."
+                    />
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <Badge variant="outline" className="text-lg">
-                    🔥 {(stats.streak_days || stats.github_streak_days || 0)}d
-                  </Badge>
+                  <StreakBadge days={stats.streak_days || stats.github_streak_days || 0} size="md" />
                 </CardContent>
               </Card>
             )}
@@ -329,86 +426,58 @@ export default async function DashboardPage() {
 
         {/* Stat Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <HoverCard>
-            <HoverCardTrigger asChild>
-              <Card className="cursor-help">
-                <CardHeader>
-                  <CardTitle className="text-sm text-foreground/80">Week</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="font-mono text-3xl font-bold">{stats?.week_commits?.toLocaleString() || '0'}</div>
-                </CardContent>
-              </Card>
-            </HoverCardTrigger>
-            <HoverCardContent>
-              <div className="space-y-2">
-                <h4 className="text-sm font-semibold">This Week</h4>
-                <p className="text-sm text-foreground/80">
-                  Total GitHub commits from the last 7 days. This is the primary metric for weekly rankings.
-                </p>
-              </div>
-            </HoverCardContent>
-          </HoverCard>
-          <HoverCard>
-            <HoverCardTrigger asChild>
-              <Card className="cursor-help">
-                <CardHeader>
-                  <CardTitle className="text-sm text-foreground/80">Month</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="font-mono text-3xl font-bold">{stats?.month_commits?.toLocaleString() || '0'}</div>
-                </CardContent>
-              </Card>
-            </HoverCardTrigger>
-            <HoverCardContent>
-              <div className="space-y-2">
-                <h4 className="text-sm font-semibold">This Month</h4>
-                <p className="text-sm text-foreground/80">
-                  Total GitHub commits from the last 30 days. Used for monthly and all-time rankings.
-                </p>
-              </div>
-            </HoverCardContent>
-          </HoverCard>
-          <HoverCard>
-            <HoverCardTrigger asChild>
-              <Card className="cursor-help">
-                <CardHeader>
-                  <CardTitle className="text-sm text-foreground/80">This Year</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="font-mono text-3xl font-bold">{stats?.year_commits?.toLocaleString() || '0'}</div>
-                </CardContent>
-              </Card>
-            </HoverCardTrigger>
-            <HoverCardContent>
-              <div className="space-y-2">
-                <h4 className="text-sm font-semibold">This Year</h4>
-                <p className="text-sm text-foreground/80">
-                  Total GitHub commits since January 1st of the current year. Shows your annual contribution activity.
-                </p>
-              </div>
-            </HoverCardContent>
-          </HoverCard>
-          <HoverCard>
-            <HoverCardTrigger asChild>
-              <Card className="cursor-help">
-                <CardHeader>
-                  <CardTitle className="text-sm text-foreground/80">All Time</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="font-mono text-3xl font-bold">{stats?.all_time_commits?.toLocaleString() || '0'}</div>
-                </CardContent>
-              </Card>
-            </HoverCardTrigger>
-            <HoverCardContent>
-              <div className="space-y-2">
-                <h4 className="text-sm font-semibold">All Time</h4>
-                <p className="text-sm text-foreground/80">
-                  Total GitHub commits across your entire GitHub history. This is your lifetime contribution count.
-                </p>
-              </div>
-            </HoverCardContent>
-          </HoverCard>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm text-foreground/80">
+                <InfoTooltip
+                  label="Week"
+                  explanation="Total GitHub commits from the last 7 days. This is the primary metric for weekly rankings."
+                />
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="font-mono text-3xl font-bold">{stats?.week_commits?.toLocaleString() || '0'}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm text-foreground/80">
+                <InfoTooltip
+                  label="Month"
+                  explanation="Total GitHub commits from the last 30 days. Used for monthly and all-time rankings."
+                />
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="font-mono text-3xl font-bold">{stats?.month_commits?.toLocaleString() || '0'}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm text-foreground/80">
+                <InfoTooltip
+                  label="This Year"
+                  explanation="Total GitHub commits since January 1st of the current year. Shows your annual contribution activity."
+                />
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="font-mono text-3xl font-bold">{stats?.year_commits?.toLocaleString() || '0'}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm text-foreground/80">
+                <InfoTooltip
+                  label="All Time"
+                  explanation="Total GitHub commits across your entire GitHub history. This is your lifetime contribution count."
+                />
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="font-mono text-3xl font-bold">{stats?.all_time_commits?.toLocaleString() || '0'}</div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Charts */}

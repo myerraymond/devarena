@@ -2,6 +2,9 @@ import { NextAuthOptions } from 'next-auth'
 import GitHubProvider from 'next-auth/providers/github'
 import { createServerClient } from '@/lib/supabase'
 
+// Minimum GitHub account age in days
+const MIN_ACCOUNT_AGE_DAYS = 7
+
 export const authOptions: NextAuthOptions = {
   providers: [
     GitHubProvider({
@@ -14,21 +17,95 @@ export const authOptions: NextAuthOptions = {
       },
     }),
   ],
+  secret: process.env.NEXTAUTH_SECRET,
+  session: {
+    strategy: 'jwt',
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
+  cookies: {
+    sessionToken: {
+      name: process.env.NODE_ENV === 'production'
+        ? '__Secure-next-auth.session-token'
+        : 'next-auth.session-token',
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+      },
+    },
+    callbackUrl: {
+      name: process.env.NODE_ENV === 'production'
+        ? '__Secure-next-auth.callback-url'
+        : 'next-auth.callback-url',
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+      },
+    },
+    csrfToken: {
+      name: process.env.NODE_ENV === 'production'
+        ? '__Host-next-auth.csrf-token'
+        : 'next-auth.csrf-token',
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+      },
+    },
+  },
   callbacks: {
     async signIn({ user, account }) {
       if (account?.provider === 'github' && account.access_token) {
         try {
-          const supabase = createServerClient()
-          
-          // Fetch GitHub user data
+          // ── Fetch GitHub profile ────────────────────────
           const githubUserResponse = await fetch('https://api.github.com/user', {
             headers: {
               Authorization: `Bearer ${account.access_token}`,
+              'User-Agent': 'DevArena',
             },
           })
+
+          if (!githubUserResponse.ok) {
+            console.error('GitHub API error during sign in:', githubUserResponse.status)
+            return '/?' + new URLSearchParams({ error: 'github_api_error' })
+          }
+
           const githubUser = await githubUserResponse.json()
 
-          // Upsert user into Supabase
+          if (!githubUser?.login) {
+            console.error('GitHub sign in: missing login field')
+            return '/?' + new URLSearchParams({ error: 'invalid_github_profile' })
+          }
+
+          // ── Account age check ─────────────────────────
+          if (githubUser.created_at) {
+            const accountAge = Date.now() - new Date(githubUser.created_at).getTime()
+            const accountAgeDays = accountAge / (1000 * 60 * 60 * 24)
+            if (accountAgeDays < MIN_ACCOUNT_AGE_DAYS) {
+              console.warn(`Blocked new GitHub account: ${githubUser.login} (${Math.floor(accountAgeDays)} days old)`)
+              return '/?' + new URLSearchParams({ error: 'account_too_new' })
+            }
+          }
+
+          // ── Public repos check ────────────────────────
+          if (!githubUser.public_repos || githubUser.public_repos < 1) {
+            console.warn(`Blocked GitHub account with no repos: ${githubUser.login}`)
+            return '/?' + new URLSearchParams({ error: 'no_repos' })
+          }
+
+          // ── Turnstile verification (if configured) ────
+          // The turnstile token is passed via the signIn options
+          // and is available in the request. For server-side NextAuth
+          // callbacks, turnstile is verified in the client before
+          // initiating the sign-in flow.
+
+          // ── Upsert user into Supabase ─────────────────
+          const supabase = createServerClient()
+
           const { data: dbUser, error } = await supabase
             .from('users')
             .upsert(
@@ -49,11 +126,12 @@ export const authOptions: NextAuthOptions = {
 
           if (error || !dbUser) {
             console.error('Error upserting GitHub user:', error)
-            return false
+            return '/?' + new URLSearchParams({ error: 'database_error' })
           }
 
-          // Sync GitHub stats immediately (async, don't wait)
-          fetch(`${process.env.NEXTAUTH_URL}/api/github/sync`, {
+          // Trigger async GitHub stats sync (fire-and-forget)
+          const syncUrl = `${process.env.NEXTAUTH_URL}/api/github/sync`
+          fetch(syncUrl, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -67,7 +145,7 @@ export const authOptions: NextAuthOptions = {
           return true
         } catch (error) {
           console.error('GitHub signin error:', error)
-          return false
+          return '/?' + new URLSearchParams({ error: 'signin_failed' })
         }
       }
       return true
@@ -75,22 +153,21 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, account, user, profile }) {
       if (account?.provider === 'github' && account.access_token) {
         token.accessToken = account.access_token
-        
-        // Fetch GitHub user data to get login
+
         try {
           const githubUserResponse = await fetch('https://api.github.com/user', {
             headers: {
               Authorization: `Bearer ${account.access_token}`,
+              'User-Agent': 'DevArena',
             },
           })
           const githubUser = await githubUserResponse.json()
-          
+
           const githubUsername = githubUser.login
           if (githubUsername) {
             token.githubUsername = githubUsername
             token.githubImage = githubUser.avatar_url
-            
-            // Get user ID from Supabase using GitHub username
+
             const supabase = createServerClient()
             const { data: dbUser } = await supabase
               .from('users')
@@ -103,8 +180,10 @@ export const authOptions: NextAuthOptions = {
           }
         } catch (error) {
           console.error('Error fetching GitHub user in JWT:', error)
-          // Fallback to profile/user data
-          const githubUsername = (profile as any)?.login || (user as any)?.login || (user as any)?.name
+          const githubUsername =
+            (profile as any)?.login ||
+            (user as any)?.login ||
+            (user as any)?.name
           if (githubUsername) {
             token.githubUsername = githubUsername
           }
@@ -114,24 +193,22 @@ export const authOptions: NextAuthOptions = {
     },
     async session({ session, token }) {
       if (token.accessToken) {
-        session.accessToken = token.accessToken as string
+        ;(session as any).accessToken = token.accessToken as string
       }
       if (token.userId) {
-        session.userId = token.userId as string
+        ;(session as any).userId = token.userId as string
       }
       if (token.githubUsername) {
-        ;(session.user as any).login = token.githubUsername as string
-        ;(session.user as any).name = token.githubUsername as string
-        // Ensure name is set
-        if (!session.user.name) {
-          session.user.name = token.githubUsername as string
+        if (session.user) {
+          ;(session.user as any).login = token.githubUsername as string
+          if (!session.user.name) {
+            session.user.name = token.githubUsername as string
+          }
         }
       }
-      // Set image from token or Supabase
-      if (token.githubImage) {
+      if (token.githubImage && session.user) {
         session.user.image = token.githubImage as string
-      } else if (!session.user?.image && token.githubUsername) {
-        // Fetch from Supabase if available
+      } else if (!session.user?.image && token.githubUsername && session.user) {
         const supabase = createServerClient()
         const { data: user } = await supabase
           .from('users')
@@ -142,14 +219,15 @@ export const authOptions: NextAuthOptions = {
           session.user.image = user.avatar_url
         }
       }
-      
+
       return session
     },
     async redirect() {
-      return `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/dashboard`
+      return `${process.env.NEXTAUTH_URL}/dashboard`
     },
   },
   pages: {
     signIn: '/',
+    error: '/',
   },
 }
