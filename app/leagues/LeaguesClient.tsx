@@ -114,8 +114,8 @@ export default function LeaguesClient({
   if (!season) {
     return (
       <div className="min-h-screen bg-background">
-        <div className="max-w-7xl mx-auto px-6 py-12">
-          <h1 className="text-3xl font-bold mb-4">Leagues</h1>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+          <h1 className="text-2xl lg:text-3xl font-bold mb-4">Leagues</h1>
           <Card>
             <CardContent className="pt-6">
               <p className="text-muted-foreground text-center py-8">
@@ -130,17 +130,17 @@ export default function LeaguesClient({
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto px-6 py-12">
-        <header className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+        <header className="mb-6 sm:mb-8">
+          <h1 className="text-2xl lg:text-3xl font-bold mb-2">
             <InfoTooltip
               label="Leagues"
               explanation="Monthly seasons where builders compete for tier placement. Tiers are assigned based on percentile rank at the end of each season."
             />
           </h1>
           <p className="text-muted-foreground mb-4">{season.name}</p>
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="px-4 py-2 rounded-md bg-muted text-sm font-mono">
+          <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-3 sm:gap-4">
+            <div className="px-4 py-2 rounded-md bg-muted text-sm sm:text-base font-mono w-full sm:w-auto text-center">
               <InfoTooltip
                 label={`Season resets in ${countdown || '—'}`}
                 explanation="At the end of each season, tiers are assigned based on final rank. Builders are promoted or relegated based on how they performed vs the previous season."
@@ -163,19 +163,19 @@ export default function LeaguesClient({
                 key={tier}
                 className={isUserTier ? 'border-primary/30 bg-primary/5' : ''}
               >
-                <CardHeader className="pb-2">
+                <CardHeader className="pb-2 p-3 sm:p-6 sm:pb-2">
                   <button
                     onClick={() => toggleTier(tier)}
-                    className="flex items-center justify-between w-full text-left"
+                    className="flex items-center justify-between w-full text-left min-h-[44px] cursor-pointer"
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                       {isExpanded ? (
                         <ChevronDown className="h-5 w-5 text-muted-foreground" />
                       ) : (
                         <ChevronRight className="h-5 w-5 text-muted-foreground" />
                       )}
-                      <span className="text-2xl">{getTierEmoji(tier)}</span>
-                      <CardTitle className="text-lg">
+                      <span className="text-xl sm:text-2xl">{getTierEmoji(tier)}</span>
+                      <CardTitle className="text-base sm:text-lg">
                         <InfoTooltip
                           label={getTierLabel(tier)}
                           explanation={TIER_TOOLTIPS[tier]}
@@ -205,8 +205,8 @@ export default function LeaguesClient({
                             <TableHead className="w-16">Rank</TableHead>
                             <TableHead>Builder</TableHead>
                             <TableHead>Score</TableHead>
-                            <TableHead>Streak</TableHead>
-                            <TableHead className="w-20">Status</TableHead>
+                            <TableHead className="hidden sm:table-cell">Streak</TableHead>
+                            <TableHead className="hidden sm:table-cell w-20">Status</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -218,9 +218,10 @@ export default function LeaguesClient({
                                 key={member.username}
                                 className={
                                   isCurrentUser
-                                    ? 'bg-muted/50'
+                                    ? 'bg-muted/50 cursor-pointer'
                                     : 'cursor-pointer hover:bg-muted/50'
                                 }
+                                onClick={() => window.location.href = `/u/${member.username}`}
                               >
                                 <TableCell className="font-mono">
                                   {member.end_rank || '—'}
@@ -228,23 +229,20 @@ export default function LeaguesClient({
                                 <TableCell>
                                   <Link
                                     href={`/u/${member.username}`}
-                                    className="flex items-center gap-3"
+                                    className="flex items-center gap-2 sm:gap-3"
                                   >
                                     <Avatar className="h-8 w-8">
                                       <AvatarImage
-                                        src={
-                                          member.avatar_url ||
-                                          `https://github.com/${member.username}.png`
-                                        }
+                                        src={`https://github.com/${member.username}.png`}
                                         alt={member.username}
                                       />
                                       <AvatarFallback>
                                         {member.username[0].toUpperCase()}
                                       </AvatarFallback>
                                     </Avatar>
-                                    <div>
+                                    <div className="min-w-0">
                                       <div className="flex items-center gap-2">
-                                        <span className="font-medium">
+                                        <span className="font-medium truncate max-w-[120px] sm:max-w-none">
                                           {member.display_name || member.username}
                                         </span>
                                         {isCurrentUser && (
@@ -253,7 +251,7 @@ export default function LeaguesClient({
                                           </Badge>
                                         )}
                                       </div>
-                                      <div className="text-sm text-muted-foreground">
+                                      <div className="text-sm text-muted-foreground truncate max-w-[120px] sm:max-w-none">
                                         @{member.username}
                                       </div>
                                     </div>
@@ -262,14 +260,14 @@ export default function LeaguesClient({
                                 <TableCell className="font-mono">
                                   {member.week_score?.toLocaleString() || '—'}
                                 </TableCell>
-                                <TableCell>
+                                <TableCell className="hidden sm:table-cell">
                                   {member.streak && member.streak > 0 ? (
                                     <StreakBadge days={member.streak} size="sm" />
                                   ) : (
                                     <span className="text-muted-foreground">—</span>
                                   )}
                                 </TableCell>
-                                <TableCell>
+                                <TableCell className="hidden sm:table-cell">
                                   {member.promoted && (
                                     <InfoTooltip
                                       label="↑ Promoted"

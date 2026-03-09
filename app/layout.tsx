@@ -45,9 +45,9 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
+    <html lang="en" className="scroll-smooth">
       <body
-        className={`${geistSans.variable} ${ibmPlexMono.variable} font-sans antialiased`}
+        className={`${geistSans.variable} ${ibmPlexMono.variable} font-sans antialiased overflow-x-hidden`}
       >
         <SessionProvider>
           <Navbar />

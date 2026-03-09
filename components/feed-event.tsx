@@ -131,9 +131,9 @@ export default function FeedEventItem({ event, animate = false }: FeedEventItemP
         href={`/u/${event.username}`}
         className="flex-shrink-0"
       >
-        <Avatar className="h-6 w-6">
+        <Avatar className="h-8 w-8">
           <AvatarImage src={avatarUrl} alt={event.username} />
-          <AvatarFallback className="text-[10px]">
+          <AvatarFallback className="text-xs">
             {event.username[0]?.toUpperCase()}
           </AvatarFallback>
         </Avatar>

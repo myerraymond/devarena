@@ -106,13 +106,13 @@ export default function FeedPageClient({ initialEvents }: FeedPageClientProps) {
 
   return (
     <>
-      {/* Filter tabs */}
-      <div className="flex flex-wrap gap-2 mb-6">
+      {/* Filter tabs — horizontally scrollable on mobile */}
+      <div className="flex gap-2 mb-6 overflow-x-auto no-scrollbar pb-1">
         {EVENT_TABS.map((tab) => (
           <button
             key={tab.value}
             onClick={() => setActiveTab(tab.value)}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-colors ${
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-colors whitespace-nowrap cursor-pointer min-h-[40px] ${
               activeTab === tab.value
                 ? 'bg-foreground text-background font-medium'
                 : 'bg-muted text-muted-foreground hover:bg-muted/80'

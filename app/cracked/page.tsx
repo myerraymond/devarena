@@ -56,9 +56,9 @@ export default async function CrackedPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto px-6 py-12">
-        <header className="mb-10">
-          <h1 className="text-3xl font-bold mb-2">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+        <header className="mb-8 sm:mb-10">
+          <h1 className="text-2xl lg:text-3xl font-bold mb-2">
             <InfoTooltip
               label="Cracked 👑"
               explanation="The #1 ranked builder per programming language this week. Rankings are based on Builder Score and update every 6 hours. Kingdoms can be taken at any time — stay active or lose your crown."
@@ -69,7 +69,7 @@ export default async function CrackedPage() {
           </p>
         </header>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
           {sorted.map((lang) => {
             const king = claimedMap.get(lang)
 
@@ -77,8 +77,8 @@ export default async function CrackedPage() {
               // Unclaimed card
               return (
                 <Card key={lang} className="bg-muted/30 border-dashed">
-                  <CardContent className="pt-6">
-                    <p className="font-mono font-bold text-lg text-muted-foreground mb-3">
+                  <CardContent className="p-4 sm:pt-6">
+                    <p className="font-mono font-bold text-base sm:text-lg text-muted-foreground mb-3">
                       {lang}
                     </p>
                     <div className="text-3xl mb-2 opacity-30">👑</div>
@@ -104,8 +104,8 @@ export default async function CrackedPage() {
               >
                 {/* Shimmer overlay */}
                 <div className="absolute inset-0 -translate-x-full animate-[shimmer_3s_infinite] bg-gradient-to-r from-transparent via-white/60 to-transparent pointer-events-none" />
-                <CardContent className="relative pt-6">
-                  <p className="font-mono font-bold text-lg mb-3">
+                <CardContent className="relative p-4 sm:pt-6">
+                  <p className="font-mono font-bold text-base sm:text-lg mb-3">
                     <InfoTooltip
                       label={lang}
                       explanation={`${king.display_name || king.username} is currently ranked #1 in ${lang} on DevArena. They earned this by having the highest Builder Score among all ${lang} developers this week.`}

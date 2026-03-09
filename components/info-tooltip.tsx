@@ -14,15 +14,21 @@ interface InfoTooltipProps {
 
 export default function InfoTooltip({ label, explanation, className }: InfoTooltipProps) {
   return (
-    <TooltipProvider delayDuration={300}>
+    <TooltipProvider delayDuration={0}>
       <Tooltip>
-        <TooltipTrigger className={cn(
-          "underline decoration-dotted underline-offset-4 cursor-help",
-          className
-        )}>
-          {label}
+        <TooltipTrigger asChild>
+          <span className={cn(
+            "underline decoration-dotted underline-offset-4 cursor-help",
+            className
+          )}>
+            {label}
+          </span>
         </TooltipTrigger>
-        <TooltipContent className="max-w-xs text-sm">
+        <TooltipContent
+          side="bottom"
+          align="start"
+          className="max-w-xs text-sm"
+        >
           {explanation}
         </TooltipContent>
       </Tooltip>

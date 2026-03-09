@@ -13,27 +13,27 @@ const leagueTiers: LeagueTier[] = ['bronze', 'silver', 'gold', 'platinum', 'diam
 export default function HowPage() {
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-2xl mx-auto px-6 py-16">
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-16">
         {/* Header */}
-        <header className="mb-12">
-          <Link href="/" className="inline-block mb-8">
+        <header className="mb-8 sm:mb-12">
+          <Link href="/" className="inline-block mb-6 sm:mb-8">
             <Logo size="md" />
           </Link>
-          <h1 className="text-3xl font-bold mb-2">How DevArena works</h1>
+          <h1 className="text-2xl lg:text-3xl font-bold mb-2">How DevArena works</h1>
           <p className="text-muted-foreground">
             Verified builds. Real scores. No vanity metrics.
           </p>
         </header>
 
         {/* Step cards */}
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {/* Step 1 — Connect GitHub */}
           <Card>
-            <CardHeader>
+            <CardHeader className="p-4 sm:p-6">
               <p className="font-mono text-sm text-muted-foreground">01</p>
               <CardTitle>Connect your GitHub</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 p-4 pt-0 sm:p-6 sm:pt-0">
               <p className="text-sm text-muted-foreground leading-relaxed">
                 Sign in with GitHub in one click. We pull your commits,
                 pull requests, and contribution streak directly from the
@@ -45,11 +45,11 @@ export default function HowPage() {
 
           {/* Step 2 — Builder Score */}
           <Card>
-            <CardHeader>
+            <CardHeader className="p-4 sm:p-6">
               <p className="font-mono text-sm text-muted-foreground">02</p>
               <CardTitle>Your builder score is calculated</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 p-4 pt-0 sm:p-6 sm:pt-0">
               <p className="text-sm text-muted-foreground leading-relaxed">
                 We combine commits, PRs merged, active days, and consistency
                 into a single score. Updated every hour. A 14-day streak beats
@@ -71,11 +71,11 @@ export default function HowPage() {
 
           {/* Step 3 — Leagues */}
           <Card>
-            <CardHeader>
+            <CardHeader className="p-4 sm:p-6">
               <p className="font-mono text-sm text-muted-foreground">03</p>
               <CardTitle>Compete in seasonal leagues</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 p-4 pt-0 sm:p-6 sm:pt-0">
               <p className="text-sm text-muted-foreground leading-relaxed">
                 Every month is a new season. Based on your score you are placed
                 into Bronze, Silver, Gold, Platinum, or Diamond. Get promoted by
@@ -92,11 +92,11 @@ export default function HowPage() {
 
           {/* Step 4 — Cracked */}
           <Card>
-            <CardHeader>
+            <CardHeader className="p-4 sm:p-6">
               <p className="font-mono text-sm text-muted-foreground">04</p>
               <CardTitle>Get cracked in your language</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 p-4 pt-0 sm:p-6 sm:pt-0">
               <p className="text-sm text-muted-foreground leading-relaxed">
                 The #1 ranked developer for each programming language earns a 👑
                 crown on their profile. Rankings update hourly. The spot can be
@@ -110,11 +110,11 @@ export default function HowPage() {
 
           {/* Step 5 — README Card */}
           <Card>
-            <CardHeader>
+            <CardHeader className="p-4 sm:p-6">
               <p className="font-mono text-sm text-muted-foreground">05</p>
               <CardTitle>Show the world you&apos;re building</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 p-4 pt-0 sm:p-6 sm:pt-0">
               <p className="text-sm text-muted-foreground leading-relaxed">
                 Add a live card to your GitHub profile README. Displays your
                 rank, streak, league, and cracked status. Updates
@@ -131,13 +131,15 @@ export default function HowPage() {
         </div>
 
         {/* Bottom CTA */}
-        <div className="mt-12">
-          <Separator className="mb-8" />
+        <div className="mt-8 sm:mt-12">
+          <Separator className="mb-6 sm:mb-8" />
           <div className="text-center space-y-4">
             <p className="text-lg font-medium">Ready to see where you rank?</p>
-            <Button asChild>
-              <Link href="/">View the leaderboard →</Link>
-            </Button>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              <Button asChild className="w-full sm:w-auto h-12 text-base">
+                <Link href="/">View the leaderboard →</Link>
+              </Button>
+            </div>
             <p className="text-sm text-muted-foreground">
               Free forever. No credit card required.
             </p>

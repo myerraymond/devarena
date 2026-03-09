@@ -26,6 +26,14 @@ export function formatHours(seconds: number): string {
 }
 
 /**
+ * Returns the GitHub avatar URL for a given username.
+ * Uses GitHub's built-in redirect which always serves the current profile picture.
+ */
+export function getAvatarUrl(username: string): string {
+  return `https://github.com/${username}.png`
+}
+
+/**
  * Checks if a timestamp is within the last 24 hours
  */
 export function isActive(snapshottedAt: string | null): boolean {

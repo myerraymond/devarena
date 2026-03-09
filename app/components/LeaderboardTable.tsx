@@ -68,10 +68,13 @@ export default function LeaderboardTable({
         )}
         onClick={() => router.push(`/u/${row.username}`)}
       >
+        {/* Rank */}
         <TableCell className={cn('font-mono', rankClass)}>{row.rank}</TableCell>
+
+        {/* Builder */}
         <TableCell>
           <div className="flex items-center gap-3">
-            <Avatar className="h-8 w-8">
+            <Avatar className="h-8 w-8 shrink-0">
               <AvatarImage
                 src={`https://github.com/${row.username}.png`}
                 alt={row.username}
@@ -80,9 +83,9 @@ export default function LeaderboardTable({
                 {row.username[0].toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-medium">{row.username}</span>
+                <span className="font-medium whitespace-nowrap">{row.username}</span>
                 {isCurrentUser && (
                   <Badge variant="secondary" className="text-xs">
                     You
@@ -135,19 +138,21 @@ export default function LeaderboardTable({
                   )
                 })()}
               </div>
-              <div className="text-sm text-foreground/70">
+              <div className="text-sm text-foreground/70 whitespace-nowrap">
                 @{row.username}
               </div>
             </div>
           </div>
         </TableCell>
+
+        {/* Score */}
         <TableCell
           className="font-mono font-medium"
           onClick={(e) => e.stopPropagation()}
         >
           <HoverCard>
             <HoverCardTrigger asChild>
-              <button className="hover:underline underline-offset-2">
+              <button className="hover:underline underline-offset-2 cursor-pointer">
                 {(row.score ?? row.weekScore)?.toLocaleString() || '—'}
               </button>
             </HoverCardTrigger>
@@ -162,9 +167,13 @@ export default function LeaderboardTable({
             </HoverCardContent>
           </HoverCard>
         </TableCell>
+
+        {/* Commits */}
         <TableCell className="font-mono text-foreground/80">
           {row.commits?.toLocaleString() || '—'}
         </TableCell>
+
+        {/* Streak */}
         <TableCell onClick={(e) => e.stopPropagation()}>
           {row.streak && row.streak > 0 ? (
             <StreakBadge days={row.streak} size="sm" />
@@ -172,9 +181,13 @@ export default function LeaderboardTable({
             <span className="text-foreground/50">—</span>
           )}
         </TableCell>
+
+        {/* Language */}
         <TableCell className="text-sm text-foreground/80">
           {row.top_language || '—'}
         </TableCell>
+
+        {/* Status */}
         <TableCell onClick={(e) => e.stopPropagation()}>
           {row.is_active ? (
             <HoverCard>
@@ -207,43 +220,44 @@ export default function LeaderboardTable({
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>
-            <InfoTooltip
-              label="Rank"
-              explanation="Position on the leaderboard this week, ranked by Builder Score. Resets every Monday."
-            />
-          </TableHead>
-          <TableHead>Builder</TableHead>
-          <TableHead>
-            <InfoTooltip
-              label="Score"
-              explanation="Calculated as: (commits × 1) + (PRs × 4) + (active days × 3) + (repos × 5). Updated every 6 hours."
-            />
-          </TableHead>
-          <TableHead>
-            <InfoTooltip
-              label="Commits"
-              explanation="Total commits pushed this week. Only counts commits with more than 5 lines changed to filter out empty commits."
-            />
-          </TableHead>
-          <TableHead>
-            <InfoTooltip
-              label="Streak"
-              explanation="Consecutive days with at least one commit. Missing a day resets the streak to zero."
-            />
-          </TableHead>
-          <TableHead>Language</TableHead>
-          <TableHead>
-            <InfoTooltip
-              label="Status"
-              explanation="Shows ● Live if the builder has pushed code in the last 24 hours."
-            />
-          </TableHead>
-        </TableRow>
-      </TableHeader>
+    <div className="overflow-x-auto no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>
+              <InfoTooltip
+                label="Rank"
+                explanation="Position on the leaderboard this week, ranked by Builder Score. Resets every Monday."
+              />
+            </TableHead>
+            <TableHead>Builder</TableHead>
+            <TableHead>
+              <InfoTooltip
+                label="Score"
+                explanation="Calculated as: (commits × 1) + (PRs × 4) + (active days × 3) + (repos × 5). Updated every 6 hours."
+              />
+            </TableHead>
+            <TableHead>
+              <InfoTooltip
+                label="Commits"
+                explanation="Total commits pushed this week. Only counts commits with more than 5 lines changed to filter out empty commits."
+              />
+            </TableHead>
+            <TableHead>
+              <InfoTooltip
+                label="Streak"
+                explanation="Consecutive days with at least one commit. Missing a day resets the streak to zero."
+              />
+            </TableHead>
+            <TableHead>Language</TableHead>
+            <TableHead>
+              <InfoTooltip
+                label="Status"
+                explanation="Shows ● Live if the builder has pushed code in the last 24 hours."
+              />
+            </TableHead>
+          </TableRow>
+        </TableHeader>
       <TableBody>
         {data.length === 0 && emptyMessage ? (
           <TableRow className="hover:bg-transparent">
@@ -281,5 +295,6 @@ export default function LeaderboardTable({
         )}
       </TableBody>
     </Table>
+    </div>
   )
 }

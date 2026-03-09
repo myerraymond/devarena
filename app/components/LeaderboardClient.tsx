@@ -257,49 +257,53 @@ export default function LeaderboardClient({
       <LeaderboardTabs activeTab={timeframe} onTabChange={handleTabChange} />
 
       {/* Search, Jump-to-rank, Filters toggle */}
-      <div className="flex flex-wrap items-center gap-3 mb-4">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-          <Input
-            placeholder="Search builders..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
-        </div>
+      <div className="space-y-3 mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="relative flex-1 min-w-0 sm:max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <Input
+              placeholder="Search builders..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 h-11 sm:h-9"
+            />
+          </div>
 
-        {currentUsername && myRank && (
-          <Button
-            variant="outline"
-            onClick={scrollToMyRow}
-            className="whitespace-nowrap"
-          >
-            Jump to my rank →{' '}
-            <span className="font-mono ml-1">#{myRank}</span>
-          </Button>
-        )}
+          <div className="flex items-center gap-2">
+            {currentUsername && myRank && (
+              <Button
+                variant="outline"
+                onClick={scrollToMyRow}
+                className="whitespace-nowrap h-11 sm:h-9 flex-1 sm:flex-none"
+              >
+                Jump to my rank →{' '}
+                <span className="font-mono ml-1">#{myRank}</span>
+              </Button>
+            )}
 
-        <Button
-          variant="ghost"
-          onClick={() => setFiltersOpen(!filtersOpen)}
-          className="gap-2"
-        >
-          <SlidersHorizontal className="h-4 w-4" />
-          Filters
-          {activeFilterCount > 0 && (
-            <Badge
-              variant="secondary"
-              className="ml-1 h-5 min-w-[20px] px-1.5 flex items-center justify-center text-xs"
+            <Button
+              variant="ghost"
+              onClick={() => setFiltersOpen(!filtersOpen)}
+              className="gap-2 h-11 sm:h-9"
             >
-              {activeFilterCount}
-            </Badge>
-          )}
-        </Button>
+              <SlidersHorizontal className="h-4 w-4" />
+              <span className="hidden sm:inline">Filters</span>
+              {activeFilterCount > 0 && (
+                <Badge
+                  variant="secondary"
+                  className="ml-1 h-5 min-w-[20px] px-1.5 flex items-center justify-center text-xs"
+                >
+                  {activeFilterCount}
+                </Badge>
+              )}
+            </Button>
+          </div>
+        </div>
       </div>
 
       {/* Collapsible filter bar */}
       {filtersOpen && (
-        <div className="flex flex-wrap items-center gap-4 mb-4 p-4 border rounded-md bg-muted/30">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 sm:gap-4 mb-4 p-4 border rounded-md bg-muted/30">
           <div className="flex items-center gap-2">
             <label className="text-sm text-muted-foreground whitespace-nowrap">
               Language
@@ -307,7 +311,7 @@ export default function LeaderboardClient({
             <select
               value={languageFilter}
               onChange={(e) => setLanguageFilter(e.target.value)}
-              className="h-9 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              className="h-11 sm:h-9 flex-1 sm:flex-initial rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
             >
               <option value="">All languages</option>
               {uniqueLanguages.map((lang) => (
@@ -325,7 +329,7 @@ export default function LeaderboardClient({
             <select
               value={minStreak}
               onChange={(e) => setMinStreak(Number(e.target.value))}
-              className="h-9 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              className="h-11 sm:h-9 flex-1 sm:flex-initial rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
             >
               <option value="0">Any</option>
               <option value="3">3+ days</option>
@@ -340,7 +344,7 @@ export default function LeaderboardClient({
               variant="ghost"
               size="sm"
               onClick={clearFilters}
-              className="text-sm"
+              className="text-sm h-11 sm:h-9 w-full sm:w-auto"
             >
               Clear filters
             </Button>

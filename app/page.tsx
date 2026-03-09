@@ -257,14 +257,14 @@ export default async function Home({ searchParams }: HomeProps) {
 
   return (
     <main className="min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto px-6 py-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-12">
         <div className="flex gap-8">
           {/* Main leaderboard content */}
           <div className="flex-1 min-w-0">
-            <header className="mb-8">
+            <header className="mb-6 sm:mb-8">
               <div className="flex items-start justify-between mb-2">
                 <div>
-                  <h1 className="text-2xl font-bold mb-1">
+                  <h1 className="text-2xl sm:text-3xl font-bold mb-1">
                     Leaderboard
                   </h1>
                   <div className="flex items-center gap-3 text-xs text-foreground/60">

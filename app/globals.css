@@ -93,3 +93,12 @@
 .animate-slide-in {
   animation: slide-in 0.4s ease-out;
 }
+
+/* Hide scrollbar for horizontally scrollable containers */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
