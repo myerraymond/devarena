@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Separator } from '@/components/ui/separator'
 import FeedEventItem from '@/components/feed-event'
-import InfoTooltip from '@/components/info-tooltip'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import type { FeedEvent, FeedEventType } from '@/lib/feed'
 
 const EVENT_TABS: { label: string; value: FeedEventType | 'all'; emoji: string; tooltip: string }[] = [
@@ -107,26 +107,30 @@ export default function FeedPageClient({ initialEvents }: FeedPageClientProps) {
   return (
     <>
       {/* Filter tabs — horizontally scrollable on mobile */}
-      <div className="flex gap-2 mb-6 overflow-x-auto no-scrollbar pb-1">
-        {EVENT_TABS.map((tab) => (
-          <button
-            key={tab.value}
-            onClick={() => setActiveTab(tab.value)}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-colors whitespace-nowrap cursor-pointer min-h-[40px] ${
-              activeTab === tab.value
-                ? 'bg-foreground text-background font-medium'
-                : 'bg-muted text-muted-foreground hover:bg-muted/80'
-            }`}
-          >
-            <span>{tab.emoji}</span>
-            <InfoTooltip
-              label={tab.label}
-              explanation={tab.tooltip}
-              className="no-underline decoration-transparent"
-            />
-          </button>
-        ))}
-      </div>
+      <TooltipProvider delayDuration={0}>
+        <div className="flex gap-2 mb-6 overflow-x-auto no-scrollbar pb-1">
+          {EVENT_TABS.map((tab) => (
+            <Tooltip key={tab.value}>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => setActiveTab(tab.value)}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-colors whitespace-nowrap cursor-pointer min-h-[40px] ${
+                    activeTab === tab.value
+                      ? 'bg-foreground text-background font-medium'
+                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                  }`}
+                >
+                  <span>{tab.emoji}</span>
+                  {tab.label}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <p className="max-w-xs text-sm">{tab.tooltip}</p>
+              </TooltipContent>
+            </Tooltip>
+          ))}
+        </div>
+      </TooltipProvider>
 
       <Separator className="mb-4" />
 

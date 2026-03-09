@@ -19,6 +19,7 @@ import LeagueBadge, { getTierLabel, getTierEmoji } from '@/components/league-bad
 import type { LeagueTier } from '@/components/league-badge'
 import StreakBadge from '@/components/streak-badge'
 import InfoTooltip from '@/components/info-tooltip'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface MemberData {
   username: string
@@ -164,33 +165,39 @@ export default function LeaguesClient({
                 className={isUserTier ? 'border-primary/30 bg-primary/5' : ''}
               >
                 <CardHeader className="pb-2 p-3 sm:p-6 sm:pb-2">
-                  <button
-                    onClick={() => toggleTier(tier)}
-                    className="flex items-center justify-between w-full text-left min-h-[44px] cursor-pointer"
-                  >
-                    <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-                      {isExpanded ? (
-                        <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                      ) : (
-                        <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                      )}
-                      <span className="text-xl sm:text-2xl">{getTierEmoji(tier)}</span>
-                      <CardTitle className="text-base sm:text-lg">
-                        <InfoTooltip
-                          label={getTierLabel(tier)}
-                          explanation={TIER_TOOLTIPS[tier]}
-                        />
-                      </CardTitle>
-                      <Badge variant="secondary" className="text-xs">
-                        {tierMembers.length}
-                      </Badge>
-                      {isUserTier && (
-                        <Badge variant="outline" className="text-xs border-primary text-primary">
-                          Your tier
-                        </Badge>
-                      )}
-                    </div>
-                  </button>
+                  <TooltipProvider delayDuration={0}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          onClick={() => toggleTier(tier)}
+                          className="flex items-center justify-between w-full text-left min-h-[44px] cursor-pointer"
+                        >
+                          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                            {isExpanded ? (
+                              <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                            ) : (
+                              <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                            )}
+                            <span className="text-xl sm:text-2xl">{getTierEmoji(tier)}</span>
+                            <CardTitle className="text-base sm:text-lg">
+                              {getTierLabel(tier)}
+                            </CardTitle>
+                            <Badge variant="secondary" className="text-xs">
+                              {tierMembers.length}
+                            </Badge>
+                            {isUserTier && (
+                              <Badge variant="outline" className="text-xs border-primary text-primary">
+                                Your tier
+                              </Badge>
+                            )}
+                          </div>
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom">
+                        <p className="max-w-xs text-sm">{TIER_TOOLTIPS[tier]}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </CardHeader>
                 {isExpanded && (
                   <CardContent>
