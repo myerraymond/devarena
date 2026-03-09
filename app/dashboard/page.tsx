@@ -197,7 +197,7 @@ export default async function DashboardPage() {
         <div className="grid grid-cols-3 gap-3 mb-4">
           {/* Builder Score */}
           <div className="rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 p-5 text-white shadow-sm">
-            <div className="text-xs font-medium text-blue-200 uppercase tracking-wider mb-1">
+            <div className="text-xs font-medium text-blue-200 tracking-wide mb-1">
               <InfoTooltip
                 label="Builder Score"
                 explanation="Calculated as: (commits × 1) + (PRs × 4) + (active days × 3) + (repos × 5)."
@@ -217,7 +217,7 @@ export default async function DashboardPage() {
           <div className={`rounded-xl p-5 shadow-sm ${ranks.week ? 'bg-gradient-to-br from-amber-400 to-orange-500 text-white' : 'border-2 border-dashed border-border'}`}>
             {ranks.week ? (
               <>
-                <div className="text-xs font-medium text-amber-100 uppercase tracking-wider mb-1">
+                <div className="text-xs font-medium text-amber-100 tracking-wide mb-1">
                   <InfoTooltip
                     label="Global Rank"
                     explanation="Your position on the leaderboard by Builder Score. Updates every 6 hours."
@@ -237,7 +237,7 @@ export default async function DashboardPage() {
 
           {/* League */}
           <div className="rounded-xl border bg-card p-5 shadow-sm">
-            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+            <div className="text-xs font-medium text-muted-foreground tracking-wide mb-2">
               <InfoTooltip
                 label="League"
                 explanation="Monthly seasons where builders compete for tier placement based on percentile rank."
@@ -314,7 +314,7 @@ export default async function DashboardPage() {
           <div className="grid grid-cols-5 gap-3 mb-4">
             {/* Commit counts with relative bars */}
             <div className="col-span-2 rounded-xl border bg-card p-5">
-              <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Commits</h2>
+              <h2 className="text-xs font-semibold text-muted-foreground tracking-wide mb-4">Commits</h2>
               <div className="space-y-3">
                 {[
                   { label: 'This Week', value: stats.week_commits },

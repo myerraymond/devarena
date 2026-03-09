@@ -45,7 +45,7 @@ export default function StatCard({ label, value, accentColor }: StatCardProps) {
   return (
     <Card className={colors?.card}>
       <CardContent className="pt-6">
-        <div className={`text-xs uppercase tracking-wider mb-2 font-medium ${colors?.label ?? 'text-foreground/70'}`}>
+        <div className={`text-xs tracking-wide mb-2 font-medium ${colors?.label ?? 'text-foreground/70'}`}>
           {label}
         </div>
         <div className={`font-mono text-2xl font-bold ${colors?.value ?? 'text-foreground'}`}>
