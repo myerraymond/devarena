@@ -58,12 +58,22 @@ function getNextSyncTime(now: number): number {
 }
 
 function SyncCountdown({ lastSyncedAt }: { lastSyncedAt: string | null }) {
-  const [now, setNow] = useState(Date.now())
+  const [now, setNow] = useState<number | null>(null)
 
   useEffect(() => {
+    setNow(Date.now())
     const interval = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(interval)
   }, [])
+
+  if (now === null) {
+    return (
+      <div className="space-y-1">
+        <span className="text-xs text-muted-foreground block opacity-0">—</span>
+        <span className="text-xs text-muted-foreground block font-mono opacity-0">—</span>
+      </div>
+    )
+  }
 
   // "Last synced" label
   let lastSyncLabel = 'Never synced'
@@ -105,12 +115,17 @@ function SyncCountdown({ lastSyncedAt }: { lastSyncedAt: string | null }) {
 }
 
 function SeasonCountdown({ endsAt }: { endsAt: string }) {
-  const [now, setNow] = useState(Date.now())
+  const [now, setNow] = useState<number | null>(null)
 
   useEffect(() => {
+    setNow(Date.now())
     const interval = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(interval)
   }, [])
+
+  if (now === null) {
+    return <span className="text-xs text-muted-foreground opacity-0">—</span>
+  }
 
   const end = new Date(endsAt).getTime()
   const diffMs = Math.max(0, end - now)

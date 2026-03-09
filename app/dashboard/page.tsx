@@ -1,24 +1,21 @@
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
 import { getSession } from '@/lib/session'
 import { supabase, createServerClient } from '@/lib/supabase'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
+import { Badge } from '@/components/ui/badge'
 import InfoTooltip from '@/components/info-tooltip'
-import DashboardSidebar from '@/app/components/DashboardSidebar'
-import DeleteAccountCard from '@/app/components/DeleteAccountCard'
-import StreakBadge, { getStreakMotivation } from '@/components/streak-badge'
+import DashboardControls from '@/app/components/DashboardControls'
+import StatCard from '@/app/components/StatCard'
+import StreakBadge from '@/components/streak-badge'
 import LeagueBadge, { getTierLabel, getTierEmoji } from '@/components/league-badge'
 import type { LeagueTier } from '@/components/league-badge'
 import ContributionBarChart from '@/app/components/charts/ContributionBarChart'
 import LanguageDonutChart from '@/app/components/charts/LanguageDonutChart'
 import { getUserLeagueMembership, getUserPreviousLeagueMembership, getActiveSeason, getNextTierThreshold } from '@/lib/leagues'
-import { getUserLanguageKingdoms, getUserLanguageRank } from '@/lib/language-kings'
 
 export const revalidate = 60
-
-// ── Data fetching ──────────────────────────────────────────
 
 async function getUserRanks(userId: string): Promise<{ week: number | null; month: number | null; allTime: number | null }> {
   const { data: userStats } = await supabase
@@ -90,7 +87,9 @@ async function getUserDashboardData(userId: string) {
     .eq('id', userId)
     .single()
 
-  if (error || !user) return null
+  if (error || !user) {
+    return null
+  }
 
   const { data: latestStats } = await supabase
     .from('stats_snapshots')
@@ -115,71 +114,12 @@ async function getUserDashboardData(userId: string) {
   }
 }
 
-async function getUserFeedEvents(userId: string) {
-  const { data, error } = await supabase
-    .from('feed_events')
-    .select('id, event_type, payload, created_at')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false })
-    .limit(5)
-
-  if (error || !data) return []
-  return data
+function getGreeting() {
+  const hour = new Date().getHours()
+  if (hour < 12) return 'Good morning'
+  if (hour < 18) return 'Good afternoon'
+  return 'Good evening'
 }
-
-// ── Language color map ─────────────────────────────────────
-
-const LANG_COLORS: Record<string, string> = {
-  TypeScript: 'bg-blue-500',
-  Python: 'bg-yellow-500',
-  JavaScript: 'bg-yellow-400',
-  Rust: 'bg-orange-500',
-  Go: 'bg-cyan-500',
-  Swift: 'bg-orange-400',
-  'C#': 'bg-purple-500',
-  'C++': 'bg-blue-600',
-  Ruby: 'bg-red-500',
-  Java: 'bg-red-400',
-  Kotlin: 'bg-green-500',
-  Dart: 'bg-blue-400',
-  PHP: 'bg-indigo-400',
-  Elixir: 'bg-purple-400',
-  Haskell: 'bg-slate-500',
-  Zig: 'bg-amber-500',
-}
-
-// ── Feed event formatting ──────────────────────────────────
-
-function formatFeedEvent(event: { event_type: string; payload: any; created_at: string }) {
-  const ago = getTimeAgo(event.created_at)
-  switch (event.event_type) {
-    case 'streak_milestone':
-      return { icon: '🔥', text: `Hit a ${event.payload?.streak_days}-day streak`, ago }
-    case 'language_king':
-      return { icon: '👑', text: `Became #1 in ${event.payload?.language}`, ago }
-    case 'rank_milestone':
-      return { icon: '🏆', text: `Entered top ${event.payload?.rank}`, ago }
-    case 'first_commit':
-      return { icon: '🚀', text: 'Joined DevArena', ago }
-    case 'league_promoted':
-      return { icon: '⬆️', text: `Promoted to ${event.payload?.tier}`, ago }
-    default:
-      return { icon: '📌', text: event.event_type, ago }
-  }
-}
-
-function getTimeAgo(dateStr: string) {
-  const diff = Date.now() - new Date(dateStr).getTime()
-  const minutes = Math.floor(diff / 60000)
-  const hours = Math.floor(minutes / 60)
-  const days = Math.floor(hours / 24)
-  if (days > 0) return `${days}d ago`
-  if (hours > 0) return `${hours}h ago`
-  if (minutes > 0) return `${minutes}m ago`
-  return 'just now'
-}
-
-// ── Page component ─────────────────────────────────────────
 
 export default async function DashboardPage() {
   const session = await getSession()
@@ -188,20 +128,18 @@ export default async function DashboardPage() {
     redirect('/')
   }
 
-  const [dashboardData, ranks, leagueMembership, previousMembership, activeSeason, userKingdoms, feedEvents] = await Promise.all([
+  const [dashboardData, ranks, leagueMembership, previousMembership, activeSeason] = await Promise.all([
     getUserDashboardData(session.userId),
     getUserRanks(session.userId),
     getUserLeagueMembership(session.userId),
     getUserPreviousLeagueMembership(session.userId),
     getActiveSeason(),
-    getUserLanguageKingdoms(session.userId),
-    getUserFeedEvents(session.userId),
   ])
 
   if (!dashboardData) {
     return (
       <div className="min-h-screen bg-background">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-12">
+        <div className="max-w-6xl mx-auto px-6 py-12">
           <div className="text-center text-muted-foreground">
             Error loading dashboard data.
           </div>
@@ -211,17 +149,13 @@ export default async function DashboardPage() {
   }
 
   const { user, stats } = dashboardData
+  const hasGitHub = stats && stats.github_commits !== null
 
   const nextTierInfo = leagueMembership
     ? await getNextTierThreshold(leagueMembership.tier)
     : null
   const userScore = stats?.week_score || 0
-  const topLanguage = stats?.top_language || stats?.github_top_language || null
-
-  // Language rank for non-kings
-  const languageRank = !userKingdoms.length && topLanguage
-    ? await getUserLanguageRank(session.userId, topLanguage)
-    : null
+  const pointsToNext = nextTierInfo ? Math.max(0, nextTierInfo.minScore - userScore) : 0
 
   const dailyData = stats?.daily_breakdown && Array.isArray(stats.daily_breakdown)
     ? stats.daily_breakdown.slice(-7)
@@ -232,457 +166,263 @@ export default async function DashboardPage() {
     : []
 
   const totalContributions = stats?.week_contributions || 0
-  const streakDays = stats?.streak_days || stats?.github_streak_days || 0
-  const streakMotivation = getStreakMotivation(streakDays)
-
-  // Check if user was active today
-  const isActiveToday = dailyData.length > 0 && (() => {
-    const today = new Date().toISOString().split('T')[0]
-    return dailyData.some((d: any) => d.date === today && d.count > 0)
-  })()
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-12">
+      <div className="max-w-5xl mx-auto px-6 py-8">
 
-        {/* ── Top Header ─────────────────────────────────── */}
-        <div className="mb-6 sm:mb-8">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
-            <h1 className="text-2xl font-bold">
-              Welcome back, {user.display_name || user.username}
+        {/* Profile Header */}
+        <div className="flex items-center gap-3 mb-6">
+          {user.avatar_url && (
+            <img
+              src={user.avatar_url}
+              alt={user.username}
+              className="w-10 h-10 rounded-full border border-border shrink-0"
+            />
+          )}
+          <div className="flex-1 min-w-0">
+            <h1 className="text-lg font-bold leading-tight truncate">
+              {user.display_name || user.username}
             </h1>
-            {user.user_number && (
-              <span className="text-sm text-muted-foreground font-mono">
-                User #{user.user_number}
-              </span>
+            <p className="text-xs text-muted-foreground">@{user.username}</p>
+          </div>
+          {user.user_number && (
+            <Badge variant="secondary" className="text-xs shrink-0">
+              #{user.user_number}
+            </Badge>
+          )}
+        </div>
+
+        {/* Hero: Score | Rank | League — 3 columns */}
+        <div className="grid grid-cols-3 gap-3 mb-4">
+          {/* Builder Score */}
+          <div className="rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 p-5 text-white shadow-sm">
+            <div className="text-xs font-medium text-blue-200 uppercase tracking-wider mb-1">
+              <InfoTooltip
+                label="Builder Score"
+                explanation="Calculated as: (commits × 1) + (PRs × 4) + (active days × 3) + (repos × 5)."
+              />
+            </div>
+            <div className="font-mono text-4xl font-bold tracking-tight">
+              {(stats?.week_score ?? 0).toLocaleString()}
+            </div>
+            {stats?.month_score != null && (
+              <div className="mt-3 pt-3 border-t border-blue-500/30 text-xs text-blue-200">
+                Month: <span className="text-white font-mono font-semibold">{stats.month_score.toLocaleString()}</span>
+              </div>
             )}
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {leagueMembership && (
-              <LeagueBadge tier={leagueMembership.tier} />
+
+          {/* Rank */}
+          <div className={`rounded-xl p-5 shadow-sm ${ranks.week ? 'bg-gradient-to-br from-amber-400 to-orange-500 text-white' : 'border-2 border-dashed border-border'}`}>
+            {ranks.week ? (
+              <>
+                <div className="text-xs font-medium text-amber-100 uppercase tracking-wider mb-1">
+                  <InfoTooltip
+                    label="Global Rank"
+                    explanation="Your position on the leaderboard by Builder Score. Updates every 6 hours."
+                  />
+                </div>
+                <div className="font-mono text-4xl font-bold tracking-tight">#{ranks.week}</div>
+                <div className="mt-3 pt-3 border-t border-amber-400/30 text-xs text-amber-100">
+                  Month: <span className="text-white font-mono font-semibold">#{ranks.month ?? '—'}</span>
+                </div>
+              </>
+            ) : (
+              <div className="h-full flex items-center justify-center text-muted-foreground text-xs text-center">
+                Keep building to appear on the leaderboard
+              </div>
             )}
-            {userKingdoms.map((lang) => (
-              <Badge
-                key={lang}
-                variant="outline"
-                className="bg-yellow-50 border-yellow-300 text-yellow-700 text-xs"
-              >
-                👑 {lang}
-              </Badge>
-            ))}
-            {isActiveToday && (
-              <Badge variant="secondary" className="text-xs">
-                <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500 mr-1.5" />
-                Live
-              </Badge>
+          </div>
+
+          {/* League */}
+          <div className="rounded-xl border bg-card p-5 shadow-sm">
+            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+              <InfoTooltip
+                label="League"
+                explanation="Monthly seasons where builders compete for tier placement based on percentile rank."
+              />
+            </div>
+            {leagueMembership ? (
+              <>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-2xl">{getTierEmoji(leagueMembership.tier)}</span>
+                  <div>
+                    <div className="text-base font-bold leading-tight">{getTierLabel(leagueMembership.tier)}</div>
+                    <LeagueBadge tier={leagueMembership.tier} className="mt-0.5" />
+                  </div>
+                </div>
+                {leagueMembership.promoted && (
+                  <div className="mb-2 px-2 py-1 rounded text-xs bg-green-50 border border-green-200 text-green-700">
+                    ↑ Promoted this season
+                  </div>
+                )}
+                {leagueMembership.relegated && (
+                  <div className="mb-2 px-2 py-1 rounded text-xs bg-muted border text-muted-foreground">
+                    ↓ Relegated this season
+                  </div>
+                )}
+                {nextTierInfo && (
+                  <div>
+                    <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden mb-1">
+                      <div
+                        className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full"
+                        style={{ width: `${Math.min(100, nextTierInfo.minScore > 0 ? (userScore / nextTierInfo.minScore) * 100 : 0)}%` }}
+                      />
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {pointsToNext > 0
+                        ? `${pointsToNext.toLocaleString()} pts to ${getTierLabel(nextTierInfo.nextTier)}`
+                        : 'Top tier'}
+                    </div>
+                  </div>
+                )}
+                {activeSeason && (
+                  <div className="mt-2 text-xs text-muted-foreground">
+                    {activeSeason.name} · {Math.max(0, Math.ceil((new Date(activeSeason.ends_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))}d left
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-muted-foreground text-xs">No league yet</div>
             )}
           </div>
         </div>
 
-        {/* ── Two-column layout ──────────────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+        {/* This Week — single horizontal strip */}
+        {hasGitHub && (stats?.week_contributions || stats?.week_commits || stats?.week_prs) && (
+          <Card className="mb-4 overflow-hidden">
+            <div className="flex divide-x divide-border">
+              {[
+                { label: 'Commits', value: stats.week_commits || 0 },
+                { label: 'Pull Requests', value: stats.week_prs || 0 },
+                { label: 'PR Reviews', value: stats.week_pr_reviews || 0 },
+                { label: 'Issues', value: stats.week_issues || 0 },
+                { label: 'Total', value: stats.week_contributions || 0 },
+              ].map(({ label, value }, i, arr) => (
+                <div key={label} className={`flex-1 px-4 py-4 text-center ${i === arr.length - 1 ? 'bg-muted/40' : ''}`}>
+                  <div className="text-xs text-muted-foreground mb-1">{label}</div>
+                  <div className={`font-mono text-2xl font-bold ${i === arr.length - 1 ? 'text-indigo-600' : 'text-foreground'}`}>{value}</div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
 
-          {/* ── Sidebar on mobile (rank + league first) ──── */}
-          <div className="lg:hidden space-y-4">
-            <DashboardSidebar
-              username={user.github_username || user.username || 'unknown'}
-              isPublic={user.is_public}
-              ranks={ranks}
-              league={leagueMembership ? {
-                tier: leagueMembership.tier,
-                promoted: leagueMembership.promoted,
-                relegated: leagueMembership.relegated,
-                previousTier: previousMembership ? getTierLabel(previousMembership.tier) : null,
-              } : null}
-              season={activeSeason ? {
-                name: activeSeason.name,
-                ends_at: activeSeason.ends_at,
-              } : null}
-              nextTier={nextTierInfo}
-              userScore={userScore}
-              lastSyncedAt={stats?.snapshotted_at || null}
-            />
-          </div>
-
-          {/* ── Main column (left, 2/3) ──────────────────── */}
-          <div className="lg:col-span-2 space-y-4 sm:space-y-6">
-
-            {/* Section 1 — Builder Score */}
-            <div className="grid grid-cols-2 gap-3 sm:gap-4">
-              <Card className="bg-primary/5 border-primary/20">
-                <CardHeader className="pb-2 p-3 sm:p-6 sm:pb-2">
-                  <CardTitle className="text-xs text-foreground/70 uppercase tracking-wide">
-                    <InfoTooltip
-                      label="This Week"
-                      explanation="Your Builder Score for the last 7 days. Calculated as: (commits × 1) + (PRs × 4) + (active days × 3) + (repos × 5)."
-                    />
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
-                  <div className="font-mono text-2xl sm:text-3xl font-bold">
-                    {(stats?.week_score ?? 0).toLocaleString()}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="pb-2 p-3 sm:p-6 sm:pb-2">
-                  <CardTitle className="text-xs text-foreground/70 uppercase tracking-wide">
-                    <InfoTooltip
-                      label="This Month"
-                      explanation="Your cumulative Builder Score since the 1st of this month."
-                    />
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
-                  <div className="font-mono text-2xl sm:text-3xl font-bold">
-                    {(stats?.month_score ?? 0).toLocaleString()}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="pb-2 p-3 sm:p-6 sm:pb-2">
-                  <CardTitle className="text-xs text-foreground/70 uppercase tracking-wide">
-                    <InfoTooltip
-                      label="All Time"
-                      explanation="Your total Builder Score since joining DevArena."
-                    />
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
-                  <div className="font-mono text-2xl sm:text-3xl font-bold">
-                    {(stats?.all_time_score ?? stats?.month_score ?? 0).toLocaleString()}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="pb-2 p-3 sm:p-6 sm:pb-2">
-                  <CardTitle className="text-xs text-foreground/70 uppercase tracking-wide">
-                    <InfoTooltip
-                      label="Daily Avg"
-                      explanation="Your average daily Builder Score over the last 30 days."
-                    />
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
-                  <div className="font-mono text-2xl sm:text-3xl font-bold">
-                    {stats?.month_score ? Math.round(stats.month_score / 30).toLocaleString() : '0'}
-                  </div>
-                </CardContent>
-              </Card>
+        {/* Commits list + Activity chart side by side */}
+        {stats && (
+          <div className="grid grid-cols-5 gap-3 mb-4">
+            {/* Commit counts with relative bars */}
+            <div className="col-span-2 rounded-xl border bg-card p-5">
+              <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Commits</h2>
+              <div className="space-y-3">
+                {[
+                  { label: 'This Week', value: stats.week_commits },
+                  { label: 'This Month', value: stats.month_commits },
+                  { label: 'This Year', value: stats.year_commits },
+                  { label: 'All Time', value: stats.all_time_commits },
+                ].map(({ label, value }, i) => {
+                  const max = stats.all_time_commits || 1
+                  const pct = Math.min(100, ((value || 0) / max) * 100)
+                  const opacity = ['opacity-100', 'opacity-80', 'opacity-60', 'opacity-40'][i]
+                  return (
+                    <div key={label}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs text-muted-foreground">{label}</span>
+                        <span className="font-mono text-sm font-bold">{(value || 0).toLocaleString()}</span>
+                      </div>
+                      <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
+                        <div className={`h-full bg-indigo-500 ${opacity} rounded-full`} style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
 
-            {/* Section 2 — Activity Breakdown */}
-            <Card>
-              <CardHeader className="pb-3 p-3 sm:p-6 sm:pb-3">
-                <CardTitle className="text-sm">
-                  <InfoTooltip
-                    label="This Week Breakdown"
-                    explanation="Your contribution breakdown for the past 7 days. Only counts commits with 5+ lines changed."
-                  />
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
-                <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
-                  {[
-                    { label: 'COMMITS', value: stats?.week_commits || 0, bold: false },
-                    { label: 'PRs', value: stats?.week_prs || 0, bold: false },
-                    { label: 'REVIEWS', value: stats?.week_pr_reviews || 0, bold: false },
-                    { label: 'REPOS', value: stats?.week_repos || stats?.repos || 0, bold: false },
-                    { label: 'SCORE', value: stats?.week_score || 0, bold: true },
-                  ].map((item) => (
-                    <div key={item.label} className="text-center">
-                      <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
-                        {item.label}
-                      </div>
-                      <div className={`font-mono text-base sm:text-lg ${item.bold ? 'font-bold' : 'font-semibold'}`}>
-                        {item.value.toLocaleString()}
-                      </div>
-                    </div>
-                  ))}
+            {/* Activity bar chart */}
+            <div className="col-span-3">
+              {dailyData.length > 0 ? (
+                <ContributionBarChart data={dailyData.map((day: { date: string; count: number }) => ({
+                  date: day.date,
+                  count: day.count,
+                }))} />
+              ) : (
+                <div className="h-full rounded-xl border border-dashed flex items-center justify-center text-muted-foreground text-sm">
+                  No activity data
                 </div>
-              </CardContent>
-            </Card>
+              )}
+            </div>
+          </div>
+        )}
 
-            {/* Section 3 — Streak */}
-            <Card>
-              <CardHeader className="pb-2 p-3 sm:p-6 sm:pb-2">
-                <CardTitle className="text-sm">
-                  <InfoTooltip
-                    label="Current Streak"
-                    explanation="Consecutive days where you pushed at least one qualifying commit (5+ lines changed)."
-                  />
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
-                <div className="flex flex-col items-center py-3 sm:py-4 gap-3">
-                  <StreakBadge days={streakDays} size="lg" />
-                  {streakMotivation && (
-                    <p className="text-sm text-muted-foreground text-center">
-                      {streakMotivation}
-                    </p>
-                  )}
+        {/* Profile stats + Language chart side by side */}
+        {stats && (
+          <div className="grid grid-cols-5 gap-3 mb-4">
+            {/* Profile stats */}
+            <div className="col-span-2 grid grid-cols-2 gap-3 content-start">
+              {stats.github_followers !== null && (
+                <div className="rounded-lg border bg-card px-4 py-3">
+                  <div className="text-xs text-muted-foreground font-medium mb-1">👥 Followers</div>
+                  <div className="font-mono text-xl font-bold">{stats.github_followers.toLocaleString()}</div>
                 </div>
-
-                {/* Mini 7-day activity chart */}
-                {dailyData.length > 0 && (
-                  <>
-                    <Separator className="my-3" />
-                    <div className="flex items-end justify-between gap-1 h-16">
-                      {dailyData.map((day: { date: string; count: number }, i: number) => {
-                        const maxCount = Math.max(...dailyData.map((d: { count: number }) => d.count), 1)
-                        const heightPct = Math.max(4, (day.count / maxCount) * 100)
-                        const isToday = day.date === new Date().toISOString().split('T')[0]
-                        const dayLabel = new Date(day.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 2)
-                        return (
-                          <div key={i} className="flex flex-col items-center gap-1 flex-1">
-                            <div
-                              className={`w-full rounded-sm transition-all ${isToday ? 'bg-primary' : 'bg-muted-foreground/20'}`}
-                              style={{ height: `${heightPct}%` }}
-                            />
-                            <span className={`text-[9px] ${isToday ? 'text-foreground font-semibold' : 'text-muted-foreground'}`}>
-                              {dayLabel}
-                            </span>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Section 4 — GitHub Stats */}
-            {stats && (
-              <Card>
-                <CardHeader className="pb-3 p-3 sm:p-6 sm:pb-3">
-                  <CardTitle className="text-sm">GitHub</CardTitle>
-                </CardHeader>
-                <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
-                  <div className="grid grid-cols-2 gap-y-3 gap-x-4 sm:gap-x-6">
-                    <div>
-                      <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">This Year</div>
-                      <div className="font-mono font-bold">{stats.year_commits?.toLocaleString() || '0'}</div>
-                    </div>
-                    <div>
-                      <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">All Time</div>
-                      <div className="font-mono font-bold">{stats.all_time_commits?.toLocaleString() || '0'}</div>
-                    </div>
-                    {stats.github_followers !== null && stats.github_followers !== undefined && (
-                      <div>
-                        <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Followers</div>
-                        <div className="font-mono font-bold">{stats.github_followers.toLocaleString()}</div>
-                      </div>
-                    )}
-                    {stats.github_stars !== null && stats.github_stars !== undefined && (
-                      <div>
-                        <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Stars</div>
-                        <div className="font-mono font-bold">{stats.github_stars.toLocaleString()}</div>
-                      </div>
-                    )}
-                    {topLanguage && (
-                      <div>
-                        <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Top Language</div>
-                        <div className="flex items-center gap-1.5">
-                          <div className={`w-2.5 h-2.5 rounded-full ${LANG_COLORS[topLanguage] || 'bg-gray-400'}`} />
-                          <span className="font-mono font-bold">{topLanguage}</span>
-                        </div>
-                      </div>
-                    )}
-                    {user.joined_at && (
-                      <div>
-                        <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Member Since</div>
-                        <div className="text-sm text-muted-foreground">
-                          {new Date(user.joined_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Section 5 — Charts */}
-            {dailyData.length > 0 && (
-              <ContributionBarChart data={dailyData.map((day: { date: string; count: number }) => ({
-                date: day.date,
-                count: day.count,
-              }))} />
-            )}
-
-            {languageData.length > 0 && (
-              <LanguageDonutChart
-                languages={languageData.map((lang: { name: string; size: number; percentage: number }) => ({
-                  name: lang.name,
-                  size: lang.size,
-                  percentage: lang.percentage,
-                }))}
-                totalContributions={totalContributions}
-              />
-            )}
-
-            {/* Section 6 — Language King Status */}
-            {userKingdoms.length > 0 ? (
-              <Card className="bg-amber-50 border-amber-200">
-                <CardHeader className="pb-2 p-3 sm:p-6 sm:pb-2">
-                  <CardTitle className="text-sm">
+              )}
+              {stats.github_stars !== null && (
+                <div className="rounded-lg border bg-card px-4 py-3">
+                  <div className="text-xs text-muted-foreground font-medium mb-1">⭐ Stars</div>
+                  <div className="font-mono text-xl font-bold">{stats.github_stars.toLocaleString()}</div>
+                </div>
+              )}
+              {(stats.streak_days !== null || stats.github_streak_days !== null) && (
+                <div className="rounded-lg border bg-card px-4 py-3">
+                  <div className="text-xs text-muted-foreground font-medium mb-1">
                     <InfoTooltip
-                      label="👑 Language Kingdoms"
-                      explanation="You are the #1 ranked developer for these languages this week. Stay active or someone can take your crown."
+                      label="🔥 Streak"
+                      explanation="Consecutive days with at least one qualifying commit (5+ lines changed)."
                     />
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
-                  <div className="space-y-2">
-                    {userKingdoms.map((lang) => (
-                      <div key={lang} className="flex items-center justify-between rounded-md border border-amber-200 bg-white px-3 py-2">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="text-lg shrink-0">👑</span>
-                          <div className="min-w-0">
-                            <div className="font-semibold truncate">#1 in the world</div>
-                            <div className="text-xs text-muted-foreground">{lang} · This week</div>
-                          </div>
-                        </div>
-                        <Link
-                          href="/cracked"
-                          className="text-xs text-amber-700 hover:underline shrink-0 ml-2"
-                        >
-                          View →
-                        </Link>
-                      </div>
-                    ))}
                   </div>
-                </CardContent>
-              </Card>
-            ) : languageRank ? (
-              <Card>
-                <CardHeader className="pb-2 p-3 sm:p-6 sm:pb-2">
-                  <CardTitle className="text-sm">
-                    <InfoTooltip
-                      label="Your Closest Kingdom"
-                      explanation="Your current rank for your top language. Keep building to reach #1."
-                    />
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
-                  <div className="flex items-center justify-between">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <div className={`w-2.5 h-2.5 rounded-full ${LANG_COLORS[languageRank.language] || 'bg-gray-400'}`} />
-                        <span className="font-semibold">{languageRank.language}</span>
-                      </div>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        You are #{languageRank.rank}
-                        {languageRank.gap > 0 && (
-                          <> · {languageRank.gap.toLocaleString()} pts behind #1</>
-                        )}
-                      </p>
-                    </div>
-                    <Link
-                      href="/cracked"
-                      className="text-xs text-muted-foreground hover:underline shrink-0 ml-2"
-                    >
-                      View all →
-                    </Link>
+                  <StreakBadge days={stats.streak_days || stats.github_streak_days || 0} size="md" />
+                </div>
+              )}
+              {(stats.top_language || stats.github_top_language) && (
+                <div className="rounded-lg border bg-card px-4 py-3">
+                  <div className="text-xs text-muted-foreground font-medium mb-1">💻 Language</div>
+                  <div className="font-mono text-sm font-bold truncate">
+                    {stats.top_language || stats.github_top_language}
                   </div>
-                </CardContent>
-              </Card>
-            ) : null}
+                </div>
+              )}
+            </div>
 
-            {/* Section 7 — Recent Milestones */}
-            <Card>
-              <CardHeader className="pb-2 p-3 sm:p-6 sm:pb-2">
-                <CardTitle className="text-sm">Your Milestones</CardTitle>
-              </CardHeader>
-              <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
-                {feedEvents.length > 0 ? (
-                  <div className="space-y-2">
-                    {feedEvents.map((event: any) => {
-                      const { icon, text, ago } = formatFeedEvent(event)
-                      return (
-                        <div key={event.id} className="flex items-center justify-between py-1.5 gap-2">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="shrink-0">{icon}</span>
-                            <span className="text-sm truncate">{text}</span>
-                          </div>
-                          <span className="text-xs text-muted-foreground shrink-0">{ago}</span>
-                        </div>
-                      )
-                    })}
-                    <Separator className="my-1" />
-                    <Link href="/feed" className="text-xs text-muted-foreground hover:underline">
-                      View global feed →
-                    </Link>
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    Your milestones will appear here as you build.
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Section 8 — README Card Preview */}
-            {user.is_public && (
-              <Card>
-                <CardHeader className="pb-2 p-3 sm:p-6 sm:pb-2">
-                  <CardTitle className="text-sm">
-                    <InfoTooltip
-                      label="README Card"
-                      explanation="A live SVG card you can embed in your GitHub profile README. Updates automatically whenever your stats sync."
-                    />
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={`/readme/${user.username}`}
-                    alt="DevArena README Card"
-                    className="rounded-md border w-full max-w-sm"
-                    width={400}
-                    height={120}
-                  />
-                  <div className="mt-3">
-                    <Link
-                      href="/dashboard/readme"
-                      className="text-sm text-muted-foreground hover:underline"
-                    >
-                      Configure →
-                    </Link>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            {/* Language donut */}
+            <div className="col-span-3">
+              {languageData.length > 0 ? (
+                <LanguageDonutChart
+                  languages={languageData.map((lang: { name: string; size: number; percentage: number }) => ({
+                    name: lang.name,
+                    size: lang.size,
+                    percentage: lang.percentage,
+                  }))}
+                  totalContributions={totalContributions}
+                />
+              ) : (
+                <div className="h-full rounded-xl border border-dashed flex items-center justify-center text-muted-foreground text-sm">
+                  No language data
+                </div>
+              )}
+            </div>
           </div>
+        )}
 
-          {/* ── Sidebar (right, 1/3) — desktop only ──────── */}
-          <div className="hidden lg:block lg:col-span-1">
-            <DashboardSidebar
-              username={user.github_username || user.username || 'unknown'}
-              isPublic={user.is_public}
-              ranks={ranks}
-              league={leagueMembership ? {
-                tier: leagueMembership.tier,
-                promoted: leagueMembership.promoted,
-                relegated: leagueMembership.relegated,
-                previousTier: previousMembership ? getTierLabel(previousMembership.tier) : null,
-              } : null}
-              season={activeSeason ? {
-                name: activeSeason.name,
-                ends_at: activeSeason.ends_at,
-              } : null}
-              nextTier={nextTierInfo}
-              userScore={userScore}
-              lastSyncedAt={stats?.snapshotted_at || null}
-            />
-          </div>
-        </div>
-
-        {/* ── Danger Zone ────────────────────────────────── */}
-        <Separator className="my-8 sm:my-10" />
-        <DeleteAccountCard username={user.github_username || user.username || 'unknown'} />
+        {/* Controls + Danger Zone */}
+        <DashboardControls
+          username={user.github_username || user.username || 'unknown'}
+          isPublic={user.is_public}
+          rank={ranks.week}
+          streak={stats?.streak_days || stats?.github_streak_days || null}
+          league={leagueMembership ? `${getTierEmoji(leagueMembership.tier)} ${getTierLabel(leagueMembership.tier)}` : null}
+          score={stats?.week_score || null}
+        />
       </div>
     </div>
   )
