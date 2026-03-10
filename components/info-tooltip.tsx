@@ -16,11 +16,13 @@ export default function InfoTooltip({ label, explanation, className }: InfoToolt
   return (
     <TooltipProvider delayDuration={300}>
       <Tooltip>
-        <TooltipTrigger className={cn(
-          "underline decoration-dotted underline-offset-4 cursor-help",
-          className
-        )}>
-          {label}
+        <TooltipTrigger asChild>
+          <span className={cn(
+            "underline decoration-dotted underline-offset-4 cursor-help",
+            className
+          )}>
+            {label}
+          </span>
         </TooltipTrigger>
         <TooltipContent className="max-w-xs text-sm">
           {explanation}

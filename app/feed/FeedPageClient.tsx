@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Separator } from '@/components/ui/separator'
 import FeedEventItem from '@/components/feed-event'
-import InfoTooltip from '@/components/info-tooltip'
 import type { FeedEvent, FeedEventType } from '@/lib/feed'
 
 const EVENT_TABS: { label: string; value: FeedEventType | 'all'; emoji: string; tooltip: string }[] = [
@@ -119,11 +118,7 @@ export default function FeedPageClient({ initialEvents }: FeedPageClientProps) {
             }`}
           >
             <span>{tab.emoji}</span>
-            <InfoTooltip
-              label={tab.label}
-              explanation={tab.tooltip}
-              className="no-underline decoration-transparent"
-            />
+            {tab.label}
           </button>
         ))}
       </div>

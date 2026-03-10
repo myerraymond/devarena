@@ -421,7 +421,7 @@ export default async function UserProfilePage({
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-xs text-muted-foreground uppercase tracking-wide">
+              <CardTitle className="text-xs text-muted-foreground tracking-wide">
                 <InfoTooltip
                   label="This Week"
                   explanation={tooltips.weekScore}
@@ -440,7 +440,7 @@ export default async function UserProfilePage({
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-xs text-muted-foreground uppercase tracking-wide">
+              <CardTitle className="text-xs text-muted-foreground tracking-wide">
                 <InfoTooltip
                   label="This Month"
                   explanation={tooltips.monthScore}
@@ -459,7 +459,7 @@ export default async function UserProfilePage({
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-xs text-muted-foreground uppercase tracking-wide">
+              <CardTitle className="text-xs text-muted-foreground tracking-wide">
                 <InfoTooltip
                   label="All Time"
                   explanation={tooltips.allTimeScore}
@@ -480,7 +480,7 @@ export default async function UserProfilePage({
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-xs text-muted-foreground uppercase tracking-wide">
+              <CardTitle className="text-xs text-muted-foreground tracking-wide">
                 <InfoTooltip
                   label="Daily Avg"
                   explanation={tooltips.dailyAverage}
@@ -504,7 +504,7 @@ export default async function UserProfilePage({
         {currentStreak > 0 && (
           <Card className={currentStreak >= 100 ? 'bg-gradient-to-r from-amber-50 to-orange-50 border-orange-200' : ''}>
             <CardHeader className="pb-2">
-              <CardTitle className="text-xs text-muted-foreground uppercase tracking-wide">
+              <CardTitle className="text-xs text-muted-foreground tracking-wide">
                 <InfoTooltip
                   label="Current Streak"
                   explanation={tooltips.streak}
