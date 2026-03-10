@@ -106,6 +106,15 @@ export const authOptions: NextAuthOptions = {
           // ── Upsert user into Supabase ─────────────────
           const supabase = createServerClient()
 
+          // Check if this is a new user before upserting
+          const { data: existingUser } = await supabase
+            .from('users')
+            .select('id')
+            .eq('github_username', githubUser.login)
+            .maybeSingle()
+
+          const isNewUser = !existingUser
+
           const { data: dbUser, error } = await supabase
             .from('users')
             .upsert(
@@ -129,18 +138,20 @@ export const authOptions: NextAuthOptions = {
             return '/?' + new URLSearchParams({ error: 'database_error' })
           }
 
-          // Trigger async GitHub stats sync (fire-and-forget)
-          const syncUrl = `${process.env.NEXTAUTH_URL}/api/github/sync`
-          fetch(syncUrl, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-internal-secret': process.env.NEXTAUTH_SECRET || '',
-            },
-            body: JSON.stringify({ userId: dbUser.id }),
-          }).catch((syncError) => {
-            console.error('Error syncing GitHub stats:', syncError)
-          })
+          // Auto-sync stats for new users on first connect
+          if (isNewUser) {
+            const syncUrl = `${process.env.NEXTAUTH_URL}/api/github/sync`
+            fetch(syncUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-internal-secret': process.env.NEXTAUTH_SECRET || '',
+              },
+              body: JSON.stringify({ userId: dbUser.id }),
+            }).catch((syncError) => {
+              console.error('Error syncing GitHub stats for new user:', syncError)
+            })
+          }
 
           return true
         } catch (error) {
