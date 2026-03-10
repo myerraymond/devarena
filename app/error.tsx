@@ -1,21 +1,15 @@
 'use client'
 
-import { useEffect } from 'react'
-import * as Sentry from '@sentry/nextjs'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 
 export default function ErrorPage({
-  error,
+  error: _error,
   reset,
 }: {
   error: Error & { digest?: string }
   reset: () => void
 }) {
-  useEffect(() => {
-    // Report to Sentry in production
-    Sentry.captureException(error)
-  }, [error])
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center">
