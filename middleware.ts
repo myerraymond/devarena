@@ -5,10 +5,7 @@ import { jwtVerify } from 'jose'
 const PUBLIC_PATHS = [
   '/',
   '/how',
-  '/cracked',
   '/kings',
-  '/leagues',
-  '/feed',
   '/waitlist',
 ]
 
