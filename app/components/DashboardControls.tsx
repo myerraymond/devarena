@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { signOut } from 'next-auth/react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
@@ -242,8 +243,7 @@ export default function DashboardControls({ username, isPublic, rank, streak, le
                         method: 'DELETE',
                       })
                       if (response.ok) {
-                        router.push('/')
-                        router.refresh()
+                        await signOut({ callbackUrl: '/' })
                       } else {
                         alert('Failed to delete account. Please try again.')
                       }

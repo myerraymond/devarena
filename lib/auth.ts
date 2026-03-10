@@ -97,12 +97,6 @@ export const authOptions: NextAuthOptions = {
             return '/?' + new URLSearchParams({ error: 'no_repos' })
           }
 
-          // ── Turnstile verification (if configured) ────
-          // The turnstile token is passed via the signIn options
-          // and is available in the request. For server-side NextAuth
-          // callbacks, turnstile is verified in the client before
-          // initiating the sign-in flow.
-
           // ── Upsert user into Supabase ─────────────────
           const supabase = createServerClient()
 
