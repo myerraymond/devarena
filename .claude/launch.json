@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "main-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--", "--port", "3002"],
+      "cwd": "/Users/myerraymond/Desktop/coding_projects/terminaluse",
+      "port": 3002
+    }
+  ]
+}

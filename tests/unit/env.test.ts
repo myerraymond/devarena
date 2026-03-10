@@ -49,7 +49,7 @@ describe('environment variable validation', () => {
     })
 
     expect(
-      schema.safeParse({ NEXTAUTH_URL: 'https://devarena.so' }).success
+      schema.safeParse({ NEXTAUTH_URL: 'https://devarena.app' }).success
     ).toBe(true)
 
     expect(

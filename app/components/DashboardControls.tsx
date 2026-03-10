@@ -152,7 +152,7 @@ export default function DashboardControls({ username, isPublic, rank, streak, le
                 {copied ? 'Link copied!' : 'Share profile'}
               </p>
               <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                devarena.so/u/{username}
+                devarena.app/u/{username}
               </p>
             </div>
           </div>

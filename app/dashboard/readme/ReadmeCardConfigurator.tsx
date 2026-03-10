@@ -33,7 +33,7 @@ const ALL_STATS: StatOption[] = [
 
 const MAX_STATS = 4
 
-const BASE_URL = 'https://devarena.so'
+const BASE_URL = 'https://devarena.app'
 
 interface Props {
   username: string

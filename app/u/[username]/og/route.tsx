@@ -323,7 +323,7 @@ export async function GET(
               color: '#0d0d0d',
             }}
           >
-            devarena.so
+            devarena.app
           </span>
         </div>
       </div>

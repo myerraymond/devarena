@@ -121,7 +121,7 @@ export default function HowPage() {
                 automatically. Configurable from your dashboard.
               </p>
               <pre className="bg-muted rounded-md px-4 py-3 text-xs font-mono overflow-x-auto">
-                <code>{'[![DevArena](https://devarena.so/readme/username?stats=rank,streak,league)](https://devarena.so)'}</code>
+                <code>{'[![DevArena](https://devarena.app/readme/username?stats=rank,streak,league)](https://devarena.app)'}</code>
               </pre>
               <Button variant="ghost" size="sm" className="px-0 text-sm" asChild>
                 <Link href="/dashboard/readme">Configure your card →</Link>
