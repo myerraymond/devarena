@@ -3,8 +3,6 @@ import { getSession } from '@/lib/session'
 import { createServerClient } from '@/lib/supabase'
 import { getGitHubStats } from '@/lib/github'
 import { insertFeedEvent } from '@/lib/feed'
-import { checkRateLimit, syncLimiter, rateLimitResponse } from '@/lib/ratelimit'
-
 const STREAK_MILESTONES = [100, 50, 30, 14, 7]
 
 export async function POST(request: NextRequest) {
@@ -31,12 +29,6 @@ export async function POST(request: NextRequest) {
 
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    // Rate limit: 1 manual sync per user per 5 minutes
-    const rl = await checkRateLimit(syncLimiter, `sync:${userId}`)
-    if (rl && !rl.success) {
-      return rateLimitResponse(rl) as unknown as NextResponse
     }
 
     const supabase = createServerClient()

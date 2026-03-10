@@ -1,7 +1,7 @@
 'use client'
 
-import { useSession } from 'next-auth/react'
-import TurnstileSignIn from '@/components/turnstile-signin'
+import { useSession, signIn } from 'next-auth/react'
+import { Button } from '@/components/ui/button'
 
 export default function ConnectCTA() {
   const { status } = useSession()
@@ -12,9 +12,9 @@ export default function ConnectCTA() {
 
   return (
     <div className="fixed bottom-6 right-6">
-      <TurnstileSignIn>
+      <Button onClick={() => signIn('github', { callbackUrl: '/dashboard' })}>
         Sign in with GitHub →
-      </TurnstileSignIn>
+      </Button>
     </div>
   )
 }

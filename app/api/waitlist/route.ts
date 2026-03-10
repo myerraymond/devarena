@@ -1,17 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase'
 import { emailSchema } from '@/lib/validation'
-import { checkRateLimit, apiLimiter, rateLimitResponse } from '@/lib/ratelimit'
 
 export async function POST(request: NextRequest) {
   try {
-    // Rate limit by IP
-    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
-    const rl = await checkRateLimit(apiLimiter, `waitlist:${ip}`)
-    if (rl && !rl.success) {
-      return rateLimitResponse(rl) as unknown as NextResponse
-    }
-
     let body: unknown
     try {
       body = await request.json()

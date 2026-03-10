@@ -16,14 +16,6 @@ const envSchema = z.object({
 
   // Cron
   CRON_SECRET: z.string().min(16, 'CRON_SECRET must be at least 16 characters'),
-
-  // Bot protection (Turnstile)
-  TURNSTILE_SECRET_KEY: z.string().optional(),
-  NEXT_PUBLIC_TURNSTILE_SITE_KEY: z.string().optional(),
-
-  // Rate limiting (Upstash) — optional, gracefully degrade if missing
-  UPSTASH_REDIS_REST_URL: z.string().url().optional(),
-  UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
 })
 
 function getEnv() {
@@ -34,20 +26,9 @@ function getEnv() {
       .map((issue) => `  ✗ ${issue.path.join('.')}: ${issue.message}`)
       .join('\n')
 
-    // In development, warn but don't crash for optional vars
     if (process.env.NODE_ENV === 'development') {
-      const requiredIssues = parsed.error.issues.filter(
-        (issue) =>
-          !['TURNSTILE_SECRET_KEY', 'NEXT_PUBLIC_TURNSTILE_SITE_KEY', 'UPSTASH_REDIS_REST_URL', 'UPSTASH_REDIS_REST_TOKEN'].includes(
-            issue.path[0] as string
-          )
-      )
-      if (requiredIssues.length > 0) {
-        console.error(`❌ Missing required environment variables:\n${formatted}`)
-        throw new Error('Missing required environment variables')
-      }
-      console.warn(`⚠️ Missing optional environment variables:\n${formatted}`)
-      return process.env as unknown as z.infer<typeof envSchema>
+      console.error(`❌ Missing required environment variables:\n${formatted}`)
+      throw new Error('Missing required environment variables')
     }
 
     console.error(`❌ Invalid environment variables:\n${formatted}`)

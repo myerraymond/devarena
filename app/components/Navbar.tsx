@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useSession, signOut } from 'next-auth/react'
+import { useSession, signOut, signIn } from 'next-auth/react'
 import { useState, useRef, useEffect } from 'react'
 import { Menu } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -14,7 +14,6 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet'
 import Logo from '@/components/logo'
-import TurnstileSignIn from '@/components/turnstile-signin'
 import InfoTooltip from '@/components/info-tooltip'
 
 const NAV_LINKS = [
@@ -176,9 +175,9 @@ export default function Navbar() {
           )}
 
           {status === 'unauthenticated' && (
-            <TurnstileSignIn>
+            <Button onClick={() => signIn('github', { callbackUrl: '/dashboard' })}>
               Sign in with GitHub
-            </TurnstileSignIn>
+            </Button>
           )}
         </div>
 
@@ -268,11 +267,15 @@ export default function Navbar() {
                 {/* Sign in button at bottom if not authenticated */}
                 {status === 'unauthenticated' && (
                   <div className="px-4 pb-6 mt-auto">
-                    <div onClick={() => setMobileOpen(false)}>
-                      <TurnstileSignIn className="w-full">
-                        Sign in with GitHub
-                      </TurnstileSignIn>
-                    </div>
+                    <Button
+                      className="w-full"
+                      onClick={() => {
+                        setMobileOpen(false)
+                        signIn('github', { callbackUrl: '/dashboard' })
+                      }}
+                    >
+                      Sign in with GitHub
+                    </Button>
                   </div>
                 )}
               </div>
