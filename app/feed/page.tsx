@@ -1,6 +1,8 @@
 import { getFeedEvents } from '@/lib/feed'
 import FeedPageClient from './FeedPageClient'
 import InfoTooltip from '@/components/info-tooltip'
+import LoginGate from '@/app/components/LoginGate'
+import { getSession } from '@/lib/session'
 
 export const revalidate = 30
 
@@ -10,6 +12,19 @@ export const metadata = {
 }
 
 export default async function FeedPage() {
+  const session = await getSession()
+  if (!session) {
+    return (
+      <div className="min-h-screen bg-background">
+        <LoginGate
+          icon="📢"
+          title="Activity Feed"
+          description="See real-time milestones, streaks, and promotions from DevArena builders."
+        />
+      </div>
+    )
+  }
+
   const { events: initialEvents } = await getFeedEvents(50, 0)
 
   return (

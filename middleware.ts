@@ -7,6 +7,9 @@ const PUBLIC_PATHS = [
   '/how',
   '/kings',
   '/waitlist',
+  '/feed',
+  '/leagues',
+  '/cracked',
 ]
 
 const PUBLIC_PATH_PREFIXES = [

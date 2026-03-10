@@ -2,6 +2,7 @@ import { getLeagueMembers, getActiveSeason } from '@/lib/leagues'
 import { getSession } from '@/lib/session'
 import { supabase } from '@/lib/supabase'
 import LeaguesClient from './LeaguesClient'
+import LoginGate from '@/app/components/LoginGate'
 import type { Metadata } from 'next'
 
 export const revalidate = 300
@@ -12,10 +13,23 @@ export const metadata: Metadata = {
 }
 
 export default async function LeaguesPage() {
-  const [members, season, session] = await Promise.all([
+  const session = await getSession()
+
+  if (!session) {
+    return (
+      <div className="min-h-screen bg-background">
+        <LoginGate
+          icon="🏆"
+          title="Leagues"
+          description="Compete in seasonal tiers — Diamond, Platinum, Gold, Silver, and Bronze — based on your builder score."
+        />
+      </div>
+    )
+  }
+
+  const [members, season] = await Promise.all([
     getLeagueMembers(),
     getActiveSeason(),
-    getSession(),
   ])
 
   // Get current user's username if signed in

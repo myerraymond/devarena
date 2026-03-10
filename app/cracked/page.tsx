@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button'
 import StreakBadge from '@/components/streak-badge'
 import InfoTooltip from '@/components/info-tooltip'
 import { getLanguageKings } from '@/lib/language-kings'
+import LoginGate from '@/app/components/LoginGate'
+import { getSession } from '@/lib/session'
 import type { Metadata } from 'next'
 
 export const revalidate = 3600
@@ -34,6 +36,20 @@ const PRESET_LANGUAGES = [
 ]
 
 export default async function CrackedPage() {
+  const session = await getSession()
+
+  if (!session) {
+    return (
+      <div className="min-h-screen bg-background">
+        <LoginGate
+          icon="👑"
+          title="Cracked"
+          description="See the #1 ranked developer per programming language this week."
+        />
+      </div>
+    )
+  }
+
   const kings = await getLanguageKings()
 
   // Build a set of claimed languages and a map for quick lookup
