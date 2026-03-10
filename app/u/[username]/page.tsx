@@ -248,13 +248,16 @@ export default async function UserProfilePage({
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-12 space-y-6 sm:space-y-8">
+      <div className="max-w-3xl mx-auto px-6 py-12 space-y-8">
 
         {/* ── HEADER SECTION ──────────────────────────────── */}
-        <div className="flex flex-col items-center text-center sm:text-left sm:flex-row sm:items-start gap-4 sm:gap-6">
-          <Avatar className="h-20 w-20 sm:h-16 sm:w-16 shrink-0">
+        <div className="flex flex-col sm:flex-row items-start gap-6">
+          <Avatar className="h-16 w-16 shrink-0">
             <AvatarImage
-              src={`https://github.com/${user.username}.png`}
+              src={
+                user.avatar_url ||
+                `https://github.com/${user.username}.png`
+              }
               alt={user.username}
             />
             <AvatarFallback className="text-xl">
@@ -263,7 +266,7 @@ export default async function UserProfilePage({
           </Avatar>
 
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-3 flex-wrap justify-center sm:justify-start mb-1">
+            <div className="flex items-center gap-3 flex-wrap mb-1">
               <h1 className="text-2xl font-bold">
                 {user.display_name || user.username}
               </h1>
@@ -280,7 +283,7 @@ export default async function UserProfilePage({
             </p>
 
             {/* Badges row */}
-            <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-start mb-4">
+            <div className="flex items-center gap-2 flex-wrap mb-4">
               {leagueMembership && (
                 <LeagueBadge tier={leagueMembership.tier} />
               )}
@@ -295,7 +298,7 @@ export default async function UserProfilePage({
               ))}
             </div>
 
-            <Button variant="outline" size="sm" asChild className="w-full sm:w-auto">
+            <Button variant="outline" size="sm" asChild>
               <a
                 href={`https://github.com/${user.username}`}
                 target="_blank"
@@ -306,9 +309,9 @@ export default async function UserProfilePage({
             </Button>
           </div>
 
-          {/* Ranks — right aligned on desktop, below header on mobile */}
+          {/* Ranks — right aligned on desktop */}
           {(ranks.week || ranks.month) && (
-            <div className="text-center sm:text-right shrink-0 space-y-1">
+            <div className="text-right shrink-0 space-y-1">
               {ranks.week && (
                 <div className="text-sm">
                   <span className="text-muted-foreground">Week </span>
@@ -355,7 +358,7 @@ export default async function UserProfilePage({
               {kingdoms.map((lang) => (
                 <div
                   key={lang}
-                  className="relative overflow-hidden bg-yellow-50 border border-yellow-200 rounded-lg p-4 sm:p-5"
+                  className="relative overflow-hidden bg-yellow-50 border border-yellow-200 rounded-lg p-5"
                 >
                   {/* Shimmer */}
                   <div className="absolute inset-0 -translate-x-full animate-[shimmer_3s_infinite] bg-gradient-to-r from-transparent via-white/60 to-transparent pointer-events-none" />
@@ -415,9 +418,9 @@ export default async function UserProfilePage({
         ) : null}
 
         {/* ── STATS GRID ──────────────────────────────────── */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card>
-            <CardHeader className="pb-2 p-3 sm:p-6 sm:pb-2">
+            <CardHeader className="pb-2">
               <CardTitle className="text-xs text-muted-foreground tracking-wide">
                 <InfoTooltip
                   label="This Week"
@@ -425,8 +428,8 @@ export default async function UserProfilePage({
                 />
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
-              <div className="font-mono text-2xl sm:text-3xl font-bold">
+            <CardContent>
+              <div className="font-mono text-3xl font-bold">
                 {(stats?.week_score ?? 0).toLocaleString()}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
@@ -436,7 +439,7 @@ export default async function UserProfilePage({
           </Card>
 
           <Card>
-            <CardHeader className="pb-2 p-3 sm:p-6 sm:pb-2">
+            <CardHeader className="pb-2">
               <CardTitle className="text-xs text-muted-foreground tracking-wide">
                 <InfoTooltip
                   label="This Month"
@@ -444,8 +447,8 @@ export default async function UserProfilePage({
                 />
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
-              <div className="font-mono text-2xl sm:text-3xl font-bold">
+            <CardContent>
+              <div className="font-mono text-3xl font-bold">
                 {(stats?.month_score ?? 0).toLocaleString()}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
@@ -455,7 +458,7 @@ export default async function UserProfilePage({
           </Card>
 
           <Card>
-            <CardHeader className="pb-2 p-3 sm:p-6 sm:pb-2">
+            <CardHeader className="pb-2">
               <CardTitle className="text-xs text-muted-foreground tracking-wide">
                 <InfoTooltip
                   label="All Time"
@@ -463,8 +466,8 @@ export default async function UserProfilePage({
                 />
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
-              <div className="font-mono text-2xl sm:text-3xl font-bold">
+            <CardContent>
+              <div className="font-mono text-3xl font-bold">
                 {(
                   stats?.all_time_commits ||
                   stats?.year_commits ||
@@ -476,7 +479,7 @@ export default async function UserProfilePage({
           </Card>
 
           <Card>
-            <CardHeader className="pb-2 p-3 sm:p-6 sm:pb-2">
+            <CardHeader className="pb-2">
               <CardTitle className="text-xs text-muted-foreground tracking-wide">
                 <InfoTooltip
                   label="Daily Avg"
@@ -484,8 +487,8 @@ export default async function UserProfilePage({
                 />
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
-              <div className="font-mono text-2xl sm:text-3xl font-bold">
+            <CardContent>
+              <div className="font-mono text-3xl font-bold">
                 {stats?.week_commits
                   ? Math.round(stats.week_commits / 7)
                   : '0'}
@@ -534,7 +537,7 @@ export default async function UserProfilePage({
           return (
             <Card>
               <CardContent className="pt-6">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <LeagueBadge tier={leagueMembership.tier} className="text-sm" />
                     <span className="text-sm text-muted-foreground">
@@ -556,16 +559,16 @@ export default async function UserProfilePage({
             stats.github_stars !== null ||
             stats.github_public_repos !== null ||
             topLanguage) && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {stats.github_followers !== null && (
                 <Card>
-                  <CardHeader className="pb-2 p-3 sm:p-6 sm:pb-2">
+                  <CardHeader className="pb-2">
                     <CardTitle className="text-xs text-muted-foreground">
                       Followers
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
-                    <div className="font-mono text-xl sm:text-2xl font-bold">
+                  <CardContent>
+                    <div className="font-mono text-2xl font-bold">
                       {stats.github_followers.toLocaleString()}
                     </div>
                   </CardContent>
@@ -573,13 +576,13 @@ export default async function UserProfilePage({
               )}
               {stats.github_stars !== null && (
                 <Card>
-                  <CardHeader className="pb-2 p-3 sm:p-6 sm:pb-2">
+                  <CardHeader className="pb-2">
                     <CardTitle className="text-xs text-muted-foreground">
                       Stars
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
-                    <div className="font-mono text-xl sm:text-2xl font-bold">
+                  <CardContent>
+                    <div className="font-mono text-2xl font-bold">
                       {stats.github_stars.toLocaleString()}
                     </div>
                   </CardContent>
@@ -587,13 +590,13 @@ export default async function UserProfilePage({
               )}
               {stats.github_public_repos !== null && (
                 <Card>
-                  <CardHeader className="pb-2 p-3 sm:p-6 sm:pb-2">
+                  <CardHeader className="pb-2">
                     <CardTitle className="text-xs text-muted-foreground">
                       Public Repos
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
-                    <div className="font-mono text-xl sm:text-2xl font-bold">
+                  <CardContent>
+                    <div className="font-mono text-2xl font-bold">
                       {stats.github_public_repos.toLocaleString()}
                     </div>
                   </CardContent>
@@ -601,13 +604,13 @@ export default async function UserProfilePage({
               )}
               {topLanguage && (
                 <Card>
-                  <CardHeader className="pb-2 p-3 sm:p-6 sm:pb-2">
+                  <CardHeader className="pb-2">
                     <CardTitle className="text-xs text-muted-foreground">
                       Top Language
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
-                    <Badge variant="secondary" className="text-sm sm:text-base">
+                  <CardContent>
+                    <Badge variant="secondary" className="text-base">
                       {topLanguage}
                     </Badge>
                   </CardContent>
@@ -648,21 +651,18 @@ function ActivityChart({
         </div>
       </CardHeader>
       <CardContent>
-        <div className="flex items-end gap-1.5 sm:gap-2 h-28 sm:h-32">
+        <div className="flex items-end gap-2 h-32">
           {data.map((day) => {
             const date = new Date(day.date)
             const isToday = date.toDateString() === today
             const pct = maxCount > 0 ? (day.count / maxCount) * 100 : 0
-            // Shorter day labels on mobile
-            const dayLabel = date.toLocaleDateString('en-US', { weekday: 'short' })
-            const shortLabel = dayLabel.charAt(0)
 
             return (
               <div
                 key={day.date}
                 className="flex-1 flex flex-col items-center gap-1.5"
               >
-                <div className="w-full flex items-end h-20 sm:h-24">
+                <div className="w-full flex items-end h-24">
                   <div
                     className={`w-full rounded-t-sm transition-all ${
                       day.count === 0
@@ -683,8 +683,7 @@ function ActivityChart({
                       : 'text-muted-foreground'
                   }`}
                 >
-                  <span className="sm:hidden">{shortLabel}</span>
-                  <span className="hidden sm:inline">{dayLabel}</span>
+                  {date.toLocaleDateString('en-US', { weekday: 'short' })}
                 </span>
               </div>
             )
